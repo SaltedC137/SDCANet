@@ -44,7 +44,7 @@ def predict(usemodel) -> bool:
         print(" Singal GPU to predict")
     net.eval()
     
-    best_model_path = "./output/" + net_name + "_best.pth"
+    best_model_path = "./output/" +net_name +"/"+net_name + "_best.pth"
 
     if best_model_path is None:
         print("No model checkpoints found in output directory!")
@@ -120,12 +120,14 @@ def predict(usemodel) -> bool:
     ranges = [(0, 5), (5, 20), (20, 50), (50, 80), (80, 100)]
     for r_min, r_max in ranges:
         c = np.sum((whites >= r_min) & (whites < r_max))
-        if c > 0: print(f"  {r_min}-{r_max}%: {c}a sheet ({c/count*100:.1f}%)")
+        if c > 0: 
+            print(f"  {r_min}-{r_max}%: {c}a sheet ({c/count*100:.1f}%)")
 
     if count > 0:
         print("\nsampling  (Binary PNG):")
         for idx in [0, min(4, count-1)]:
-            if idx >= len(test_images): continue
+            if idx >= len(test_images): 
+                continue
             fname = os.path.splitext(os.path.basename(test_images[idx]))[0] + "_binary.png"
             fpath = os.path.join(output_dir, fname)
             if os.path.exists(fpath):

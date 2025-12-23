@@ -1,5 +1,4 @@
 import torch
-import torchvision.models as models
 import torch.nn as nn
 from torch.nn import functional as F
 from .res2net import res2net50_v1b_26w_4s
@@ -62,15 +61,17 @@ class CoordAtt(nn.Module):
 
 
 class StripDiffBlock(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, dilation = 2, k=3):
         super(StripDiffBlock, self).__init__()
         
+        p = (dilation * (k - 1)) // 2
+
         self.conv_h = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(1, 7), padding=(0, 3)),
+            nn.Conv2d(in_channels, in_channels, kernel_size=(1, 3), padding=(0, p), dilation=(1, dilation)),
             nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
         
         self.conv_v = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(7, 1), padding=(3, 0)),
+            nn.Conv2d(in_channels, in_channels, kernel_size=(3, 1), padding=(p, 0), dilation=(dilation, 1)),
             nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
         
         self.fusion = nn.Sequential(
@@ -94,8 +95,7 @@ class StripDiffBlock(nn.Module):
         fused = self.fusion(combined)
         out = self.coord_att(fused)
         
-        return out
-
+        return out + low_feat
 
 
 class SDCANet(nn.Module):
@@ -105,25 +105,30 @@ class SDCANet(nn.Module):
         # ---- ResNet Backbone ----
         self.resnet = res2net50_v1b_26w_4s(pretrained=True)
 
+        self._patch_resnet()
+
         self.x5_dem_1 = nn.Sequential(nn.Conv2d(2048, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.x4_dem_1 = nn.Sequential(nn.Conv2d(1024, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.x3_dem_1 = nn.Sequential(nn.Conv2d(512, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.x2_dem_1 = nn.Sequential(nn.Conv2d(256, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
 
+        self.x_half_dem = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.sdb_half = StripDiffBlock(64, dilation=1)
+
         # denseness
-        self.sdb_x5_x4 = StripDiffBlock(64)
-        self.sdb_x4_x3 = StripDiffBlock(64)
-        self.sdb_x3_x2 = StripDiffBlock(64)
-        self.sdb_x2_x1 = StripDiffBlock(64)
+        self.sdb_x5_x4 = StripDiffBlock(64, dilation=3)
+        self.sdb_x4_x3 = StripDiffBlock(64, dilation=2)
+        self.sdb_x3_x2 = StripDiffBlock(64, dilation=2)
+        self.sdb_x2_x1 = StripDiffBlock(64, dilation=1)
 
-        self.sdb_x5_x4_x3 = StripDiffBlock(64)
-        self.sdb_x4_x3_x2 = StripDiffBlock(64)
-        self.sdb_x3_x2_x1 = StripDiffBlock(64)
+        self.sdb_x5_x4_x3 = StripDiffBlock(64, dilation=2)
+        self.sdb_x4_x3_x2 = StripDiffBlock(64, dilation=1)
+        self.sdb_x3_x2_x1 = StripDiffBlock(64, dilation=1)
 
-        self.sdb_x5_x4_x3_x2 = StripDiffBlock(64)
-        self.sdb_x4_x3_x2_x1 = StripDiffBlock(64)
+        self.sdb_x5_x4_x3_x2 = StripDiffBlock(64, dilation=1)
+        self.sdb_x4_x3_x2_x1 = StripDiffBlock(64, dilation=1)
 
-        self.sdb_x5_x4_x3_x2_x1 = StripDiffBlock(64)
+        self.sdb_x5_x4_x3_x2_x1 = StripDiffBlock(64, dilation=1)
         #
 
         self.level3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
@@ -136,18 +141,54 @@ class SDCANet(nn.Module):
         self.output4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.output3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.output2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        
-        self.output1 = nn.Sequential(nn.Conv2d(64, num_classes, kernel_size=3, padding=1))
+        self.output1 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
 
+        self.final_cls = nn.Conv2d(64,num_classes,kernel_size=1)
+
+
+    def _patch_resnet(self):
+        # ---  Layer 3 (target: Output Stride 8, Dilation 2) ---
+        for i, block in enumerate(self.resnet.layer3):
+            for conv in block.convs:
+                conv.stride = (1, 1)
+                conv.dilation = (2, 2)
+                conv.padding = (2, 2)
+            
+            if i == 0:
+                if hasattr(block, 'pool'):
+                    block.pool.stride = 1
+                    block.pool.padding = 1 
+                
+                if block.downsample is not None:
+                    if isinstance(block.downsample[0], nn.AvgPool2d):
+                        block.downsample[0].stride = 1
+                        block.downsample[0].kernel_size = 1 
+
+        # ---  Layer 4 (target: Output Stride 8, Dilation 4) ---
+        for i, block in enumerate(self.resnet.layer4):
+            for conv in block.convs:
+                conv.stride = (1, 1)
+                conv.dilation = (4, 4)
+                conv.padding = (4, 4)
+            if i == 0:
+                if hasattr(block, 'pool'):
+                    block.pool.stride = 1
+                    block.pool.padding = 1
+                
+                if block.downsample is not None:
+                    if isinstance(block.downsample[0], nn.AvgPool2d):
+                        block.downsample[0].stride = 1
+                        block.downsample[0].kernel_size = 1
+                
     def forward(self, x):
         input_size = x.size()[2:]
 
 
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
-        x = self.resnet.relu(x)
-        x1 = self.resnet.maxpool(x)      # bs, 64, 88, 88
+        x_half = self.resnet.relu(x)
 
+        x1 = self.resnet.maxpool(x_half)      # bs, 64, 88, 88
         x2 = self.resnet.layer1(x1)      # bs, 256, 88, 88
         x3 = self.resnet.layer2(x2)     # bs, 512, 44, 44
         x4 = self.resnet.layer3(x3)     # bs, 1024, 22, 22
@@ -191,19 +232,30 @@ class SDCANet(nn.Module):
         out2 = self.output2(out2_feat)
         
         out1_feat = F.interpolate(out2, size=level1.size()[2:], mode='bilinear', align_corners=True) + level1
-        out1 = self.output1(out1_feat)
+        out1 = self.output1(out1_feat) # 1/4
 
-        output = F.interpolate(out1, size=input_size, mode='bilinear', align_corners=True)
+        out_half = self.sdb_half(out1, self.x_half_dem(x_half))
+        out_final = self.final_cls(out_half)
+        output = F.interpolate(out_final, size=input_size, mode='bilinear', align_corners=True)
         if self.training:
-            return output
+            aux_out = self.final_cls(F.interpolate(level1, size=out_half.size()[2:], mode='bilinear'))
+            aux_output = F.interpolate(aux_out, size=input_size, mode='bilinear', align_corners=True)
+            return output,aux_output
         return output
 
 
 if __name__ == '__main__':
-    model = SDCANet(class_num=2)
+    model = SDCANet(num_classes=2)
+    model.eval() 
     dummy_input = torch.randn(2, 3, 352, 352) 
-    output = model(dummy_input)
+    with torch.no_grad():
+        output = model(dummy_input)
     print("Output shape:", output.shape)
+    model.train()
+    outputs = model(dummy_input)
+    print("Training mode output count:", len(outputs))
+    print("Main output shape:", outputs[0].shape)
+    print("Aux output shape:", outputs[1].shape)
 
 
 
