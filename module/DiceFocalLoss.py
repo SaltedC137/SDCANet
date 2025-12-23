@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class DiceFocalLoss(nn.Module):
     def __init__(self, weight_dice=0.5, weight_focal=0.5, 
-                 focal_alpha=0.25, focal_gamma=2.0, smooth=1e-6,
+                 focal_alpha=None, focal_gamma=2.0, smooth=1e-6,
                  class_num=1):
         """
         Args:
@@ -14,7 +14,12 @@ class DiceFocalLoss(nn.Module):
         self.weight_dice = weight_dice
         self.weight_focal = weight_focal
         self.smooth = smooth
-        self.focal_alpha = focal_alpha
+        
+        if focal_alpha is None:
+            self.focal_alpha = torch.tensor([0.2,0.8])
+        else:
+            self.focal_alpha = torch.tensor(focal_alpha)
+
         self.focal_gamma = focal_gamma
         self.class_num = class_num
 
@@ -57,11 +62,16 @@ class DiceFocalLoss(nn.Module):
         else:
             ce_loss = F.cross_entropy(inputs, targets, reduction='none')
             pt = torch.exp(-ce_loss)
-            focal_loss = self.focal_alpha * (1-pt)**self.focal_gamma * ce_loss
+
+            at = self.focal_alpha.to(inputs.device).gather(0, targets.long().view(-1)).view_as(targets)
+            focal_loss = at * (1 - pt)**self.focal_gamma * ce_loss
 
             return focal_loss.mean()
 
     def forward(self, inputs, targets):
+        
+        if targets.dim() == 4:
+            targets = targets.squeeze(1)
         dice_loss_val = self.dice_loss(inputs, targets)
         focal_loss_val = self.focal_loss(inputs, targets)
         

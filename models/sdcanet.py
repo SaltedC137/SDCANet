@@ -67,13 +67,17 @@ class StripDiffBlock(nn.Module):
         p = (dilation * (k - 1)) // 2
 
         self.conv_h = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(1, 3), padding=(0, p), dilation=(1, dilation)),
+            nn.Conv2d(in_channels, in_channels, kernel_size=(1, k), padding=(0, p), dilation=(1, dilation)),
             nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
         
         self.conv_v = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(3, 1), padding=(p, 0), dilation=(dilation, 1)),
+            nn.Conv2d(in_channels, in_channels, kernel_size=(k, 1), padding=(p, 0), dilation=(dilation, 1)),
             nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
         
+        self.conv_std = nn.Sequential(
+            nn.Conv2d(in_channels,in_channels,kernel_size=3,padding=dilation,dilation=dilation),
+            nn.BatchNorm2d(in_channels),nn.ReLU(inplace=True))
+
         self.fusion = nn.Sequential(
             nn.Conv2d(in_channels * 2, in_channels, 3, padding=1), 
             nn.BatchNorm2d(in_channels),
@@ -88,14 +92,65 @@ class StripDiffBlock(nn.Module):
 
         feat_h = self.conv_h(diff)
         feat_v = self.conv_v(diff)
+        feat_std = self.conv_std(diff)
 
-        feat_diff = feat_h + feat_v
-        combined = torch.cat([feat_diff, low_feat], dim=1)
+        feat_sum = feat_std + feat_h + feat_v
+
+        combined = torch.cat([feat_sum, low_feat], dim=1)
 
         fused = self.fusion(combined)
         out = self.coord_att(fused)
         
         return out + low_feat
+
+
+class ASPP(nn.Module):
+    def __init__(self, in_channels, branch_channels, out_channels, dilation_rates):
+        super(ASPP, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+        
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, kernel_size=3, dilation=dilation_rates[0], 
+                      padding=dilation_rates[0], bias=False),
+            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+        
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, kernel_size=3, dilation=dilation_rates[1], 
+                      padding=dilation_rates[1], bias=False),
+            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+        
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, kernel_size=3, dilation=dilation_rates[2], 
+                      padding=dilation_rates[2], bias=False),
+            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+        
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+
+        self.project = nn.Sequential(
+            nn.Conv2d(branch_channels * 5, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels), nn.ReLU(inplace=True),
+            nn.Dropout(0.5) 
+        )
+
+    def forward(self, x):
+        x1 = self.conv1(x)
+        x2 = self.conv2(x)
+        x3 = self.conv3(x)
+        x4 = self.conv4(x)
+        
+        x5 = self.pool(x)
+        x5 = self.conv5(x5)
+        x5 = F.interpolate(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
+        
+        out = torch.cat((x1, x2, x3, x4, x5), dim=1)
+        return self.project(out)
+
+
 
 
 class SDCANet(nn.Module):
@@ -107,7 +162,7 @@ class SDCANet(nn.Module):
 
         self._patch_resnet()
 
-        self.x5_dem_1 = nn.Sequential(nn.Conv2d(2048, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.aspp = ASPP(in_channels=2048, branch_channels=256, out_channels=64, dilation_rates=[6, 12, 18])
         self.x4_dem_1 = nn.Sequential(nn.Conv2d(1024, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.x3_dem_1 = nn.Sequential(nn.Conv2d(512, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.x2_dem_1 = nn.Sequential(nn.Conv2d(256, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
@@ -194,7 +249,7 @@ class SDCANet(nn.Module):
         x4 = self.resnet.layer3(x3)     # bs, 1024, 22, 22
         x5 = self.resnet.layer4(x4)     # bs, 2048, 11, 11
 
-        x5_dem_1 = self.x5_dem_1(x5)
+        x5_dem_1 = self.aspp(x5)
         x4_dem_1 = self.x4_dem_1(x4)
         x3_dem_1 = self.x3_dem_1(x3)
         x2_dem_1 = self.x2_dem_1(x2)
@@ -244,10 +299,11 @@ class SDCANet(nn.Module):
         return output
 
 
+
 if __name__ == '__main__':
     model = SDCANet(num_classes=2)
     model.eval() 
-    dummy_input = torch.randn(2, 3, 352, 352) 
+    dummy_input = torch.randn(2, 3, 256, 256) 
     with torch.no_grad():
         output = model(dummy_input)
     print("Output shape:", output.shape)
