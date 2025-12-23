@@ -74,8 +74,8 @@ def train(usemodel) -> bool:
     # ).to(device)
 
     criterion = DiceFocalLoss(
-        weight_dice=0.35,
-        weight_focal=0.65,
+        weight_dice=0.2,
+        weight_focal=0.8,
         focal_alpha=[0.2,0.8],
         class_num=cfg.class_num
     ).to(device)
