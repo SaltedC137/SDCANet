@@ -125,3 +125,6 @@ def test(usemodel) ->bool:
     if train_miou / (len(test_data) - error) > max(miou_list):
         miou_list.append(train_miou / (len(test_data) - error))
         print(epoch_str + '==========last')
+    
+    del net
+    torch.cuda.empty_cache()

@@ -20,7 +20,6 @@ class h_swish(nn.Module):
         return x * self.sigmoid(x)
 
 # CA attention
-
 class CoordAtt(nn.Module):
     def __init__(self, inp, oup, reduction=32):
         super(CoordAtt, self).__init__()
@@ -297,7 +296,6 @@ class SDCANet(nn.Module):
             aux_output = F.interpolate(aux_out, size=input_size, mode='bilinear', align_corners=True)
             return output,aux_output
         return output
-
 
 
 if __name__ == '__main__':
