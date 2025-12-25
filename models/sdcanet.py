@@ -312,5 +312,3 @@ if __name__ == '__main__':
     print("Aux output shape:", outputs[1].shape)
 
 
-
-

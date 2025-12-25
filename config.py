@@ -42,13 +42,12 @@ if not os.path.exists(class_dict_path):
     print(f"establish complete: {class_dict_path}")
 
 
-BATCH_SIZE = 8                     
+BATCH_SIZE = 16 
 H_size = 256   
 W_size= 256   
 class_num=2    
 LR=0.0002       
-EPOCH_NUMBER=1
-WEIGHT_DECAY=0.01
+EPOCH_NUMBER=100
 LR_SCHEDULER_FACTOR=0.5
 LR_SCHEDULER_PATIENCE=10
 IN_CHANNELS = 3
