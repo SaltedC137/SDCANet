@@ -41,6 +41,12 @@ def main():
         num_classes=cfg.NUM_CLASSES
     ))
 
+    selected_model_type = ModelType.DEEPLABV3
+    struction = predict(usemodel=lambda: selected_model_type.get_model(
+        in_channels=cfg.IN_CHANNELS,
+        num_classes=cfg.NUM_CLASSES
+    ))
+
 
 if __name__ == "__main__":
     main()
