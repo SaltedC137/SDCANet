@@ -20,7 +20,6 @@ class h_swish(nn.Module):
         return x * self.sigmoid(x)
 
 # CA attention
-
 class CoordAtt(nn.Module):
     def __init__(self, inp, oup, reduction=32):
         super(CoordAtt, self).__init__()
@@ -299,7 +298,6 @@ class SDCANet(nn.Module):
         return output
 
 
-
 if __name__ == '__main__':
     model = SDCANet(num_classes=2)
     model.eval() 
@@ -312,7 +310,5 @@ if __name__ == '__main__':
     print("Training mode output count:", len(outputs))
     print("Main output shape:", outputs[0].shape)
     print("Aux output shape:", outputs[1].shape)
-
-
 
 
