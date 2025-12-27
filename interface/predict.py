@@ -133,6 +133,8 @@ def predict(usemodel) -> bool:
             if os.path.exists(fpath):
                 sz = os.path.getsize(fpath) / 1024
                 print(f"  sample {idx+1}: {fname} ({sz:.1f} KB) | proportion {whites[idx]:.2f}%")
+    del net
+    torch.cuda.empty_cache()
 
 
 def load_checkpoint(model, path):
