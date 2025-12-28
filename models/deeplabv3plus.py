@@ -2,7 +2,7 @@ import torch
 import torchvision.models as models
 import torch.nn as nn
 from torch.nn import functional as F
-from .mobilenet import mobilenet_v2
+from .backbones.mobilenet import mobilenet_v2
 
 
 class ChannelAttention(nn.Module):

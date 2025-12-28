@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from .res2net import res2net50_v1b_26w_4s
+from .backbones.res2net import res2net50_v1b_26w_4s
 
 class h_sigmoid(nn.Module):
     def __init__(self, inplace=True):
