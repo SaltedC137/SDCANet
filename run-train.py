@@ -43,7 +43,7 @@ def main():
     #     num_classes=cfg.NUM_CLASSES
     # ))
 
-    selected_model_type = ModelType.DEEPLABV3
+    selected_model_type = ModelType.SDCANet
     train(usemodel=lambda: selected_model_type.get_model(
         in_channels=cfg.IN_CHANNELS,
         num_classes=cfg.NUM_CLASSES

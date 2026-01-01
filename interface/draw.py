@@ -9,6 +9,7 @@ from utils.model_enum import ModelType
 
 def plot_learning_curves(model_type: ModelType):
 
+    fontweight = 16
 
     temp_net = model_type.get_model(in_channels=cfg.IN_CHANNELS, num_classes=cfg.class_num)
     net_name = temp_net.__class__.__name__
@@ -36,21 +37,25 @@ def plot_learning_curves(model_type: ModelType):
 
 
     plt.subplot(1, 2, 1)
-    plt.plot(df_train['epoch'], df_train['loss'], label='Train Loss', color='#3498DB', linewidth=2)
-    plt.plot(df_val['epoch'], df_val['loss'], label='Val Loss', color='#E74C3C', linestyle='--', linewidth=2)
-    plt.title(f'{net_name} Loss', fontsize=14)
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('loss', fontsize=12)
-    plt.legend()
+    plt.plot(df_train['epoch'], df_train['loss'], label='训练集 Loss', color='#3498DB', linewidth=2)
+    plt.plot(df_val['epoch'], df_val['loss'], label='验证集 Loss', color='#E74C3C', linestyle='--', linewidth=2)
+    plt.title(f'{net_name} Loss 曲线', fontsize=fontweight)
+    plt.xticks(fontsize = fontweight)
+    plt.yticks(fontsize = fontweight)
+    plt.xlabel('训练轮数 (Epoch)', fontsize=fontweight)
+    plt.ylabel('损失值', fontsize=fontweight)
+    plt.legend(fontsize = fontweight - 2)
     plt.grid(True, alpha=0.3)
 
     plt.subplot(1, 2, 2)
-    plt.plot(df_train['epoch'], df_train['miou'], label='Train mIoU', color='#2ECC71', linewidth=2)
-    plt.plot(df_val['epoch'], df_val['miou'], label='Val mIoU', color='#9B59B6', linestyle='--', linewidth=2)
-    plt.title(f'{net_name} mIoU', fontsize=14)
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('mIoU ', fontsize=12)
-    plt.legend()
+    plt.plot(df_train['epoch'], df_train['miou'], label='训练集 mIoU', color='#2ECC71', linewidth=2)
+    plt.plot(df_val['epoch'], df_val['miou'], label='验证集 mIoU', color='#9B59B6', linestyle='--', linewidth=2)
+    plt.title(f'{net_name} mIoU 曲线', fontsize=fontweight)
+    plt.xticks(fontsize = fontweight)
+    plt.yticks(fontsize = fontweight)
+    plt.xlabel('训练轮数 (Epoch)', fontsize=fontweight)
+    plt.ylabel('mIoU 得分', fontsize=fontweight)
+    plt.legend(fontsize = fontweight - 2)
     plt.grid(True, alpha=0.3)
 
     plt.tight_layout()
