@@ -16,10 +16,14 @@ import time
 from utils import *
 from torch.autograd import Variable
 import csv
+import gc
 
 
 def test(usemodel) ->bool:
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    torch.cuda.empty_cache()
+    gc.collect()
 
     BATCH_SIZE = config.BATCH_SIZE
     miou_list = [0]
@@ -39,7 +43,7 @@ def test(usemodel) ->bool:
         net=net.to(device)
         print(" Singal GPU to predict")
 
-    best_model_path = "./output/" + net_name + "_best.pth"
+    best_model_path = "./output/" +net_name +"/"+net_name + "_best.pth"
 
     checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
 
@@ -125,3 +129,6 @@ def test(usemodel) ->bool:
     if train_miou / (len(test_data) - error) > max(miou_list):
         miou_list.append(train_miou / (len(test_data) - error))
         print(epoch_str + '==========last')
+    
+    del net
+    torch.cuda.empty_cache()
