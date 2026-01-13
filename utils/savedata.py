@@ -8,6 +8,7 @@ import config as cfg
 
 def save_model(model, model_name, save_dir=cfg.SAVE_PATH, epoch=None,is_best = False, **kwargs):
 
+    save_dir = save_dir + model_name  + "/"
     os.makedirs(save_dir, exist_ok=True)
 
     if is_best:
@@ -36,7 +37,8 @@ def save_model(model, model_name, save_dir=cfg.SAVE_PATH, epoch=None,is_best = F
 
 def log_single_epoch(epoch, miou, pixel_accuracy, loss, model_name, save_dir=cfg.SAVE_PATH, filename=
 None):
-
+    
+    save_dir = save_dir + model_name  + "/"
     os.makedirs(save_dir, exist_ok=True)
 
     if filename is None:

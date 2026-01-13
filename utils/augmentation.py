@@ -9,7 +9,7 @@ def get_training_augmentation(crop_size):
         album.HorizontalFlip(p=0.5),
         album.VerticalFlip(p=0.5),
         album.RandomRotate90(p=0.5),
-        album.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=15, p=0.5),
+        album.Affine(translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},scale=(0.8, 1.2), rotate=(-15, 15), p=0.5),
         album.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
         album.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2(),

@@ -1,5 +1,3 @@
-import os
-import warnings
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,14 +5,15 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import numpy as np
-import matplotlib.pyplot as plt
 import time
 import sys
-import io
-from utils import *
+from utils.savedata import save_model
+from utils.savedata import log_single_epoch
+from utils.Dataset import Datainit
+from utils.augmentation import get_training_augmentation
+from utils.augmentation import get_validation_augmentation
+from utils.Metrics import eval_semantic_segmentation
 import config as cfg
-import logging
-from module.FocalLoss import FocalLoss
 from module.DiceFocalLoss import DiceFocalLoss
 
 
@@ -40,9 +39,9 @@ def train(usemodel) -> bool:
                                 class_num=cfg.class_num)
 
         train_loader = DataLoader(train_dataset, batch_size=cfg.BATCH_SIZE, 
-                                  shuffle=True, num_workers=8, drop_last=True)
+                                  shuffle=True, num_workers=8, drop_last=True,pin_memory=True)
         val_loader = DataLoader(val_dataset, batch_size=cfg.BATCH_SIZE, 
-                                shuffle=False, num_workers=8)
+                                shuffle=False, num_workers=8,pin_memory=True)
     except Exception as e:
         print(f"data load failure : {e}")
         sys.exit(1)
@@ -54,7 +53,7 @@ def train(usemodel) -> bool:
     print(f"input image size: {test_img.shape} (B, C, H, W)")
     print(f"label size: {test_label.shape}")    
 
-    model = usemodel();
+    model = usemodel()
     model_name = model.__class__.__name__
 
     if torch.cuda.device_count() > 1:
@@ -75,8 +74,9 @@ def train(usemodel) -> bool:
     # ).to(device)
 
     criterion = DiceFocalLoss(
-        weight_dice=0.3,
-        weight_focal=0.7,
+        weight_dice=0.2,
+        weight_focal=0.8,
+        focal_alpha=[0.2,0.8],
         class_num=cfg.class_num
     ).to(device)
     
@@ -87,7 +87,7 @@ def train(usemodel) -> bool:
     
     start_time = time.time()
 
-    for epoch in range (1 , 1+ cfg.EPOCH_NUMBER + 1):
+    for epoch in range (1 , 1 + cfg.EPOCH_NUMBER + 1):
         current_lr = optimizer.param_groups[0]['lr']
         print(f'\nEpoch[{epoch}/{cfg.EPOCH_NUMBER}] current lr:{current_lr}')
         
@@ -101,18 +101,34 @@ def train(usemodel) -> bool:
             img_label = sample["label"].to(device)
             
             optimizer.zero_grad()
-            out = model(img_data)
+            preds = model(img_data)
+
+            if isinstance(preds,(list,tuple)):
+                out = preds[0]
+                aux_out = preds[1]
+            else:
+                out = preds
+                aux_out = None
 
             if out.shape[-2:] != img_label.shape[-2:]:
                 out = F.interpolate(out, size=img_label.shape[-2:], mode='bilinear', align_corners=True)
-            
+
+            if aux_out is not None and aux_out.shape[-2:] != img_label.shape[-2:]:
+                aux_out = F.interpolate(aux_out , size=img_label.shape, mode='bilinear', align_corners=True)
 
             if img_label.ndim == 4 and img_label.shape[1] == 1:
                 target = img_label.squeeze(1).long()
             else:
                 target = img_label.long()
 
-            loss = criterion(out , target)
+
+            if aux_out is not None:
+                loss_main = criterion(out,target)
+                loss_aux = criterion(aux_out,target)
+                loss = loss_main + 0.4 * loss_aux
+            else:
+                loss = criterion(out , target)
+
             loss.backward()
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -157,7 +173,12 @@ def train(usemodel) -> bool:
                 img = sample['img'].to(device)
                 label = sample['label'].to(device)
 
-                out = model(img)
+                preds = model(img)
+
+                if isinstance(preds,(list,tuple)):
+                    out = preds[0]
+                else: 
+                    out = preds
                 
                 if out.shape[-2:] != label.shape[-2:]:
                     out = F.interpolate(out, size=label.shape[-2:], mode='bilinear', align_corners=True)
@@ -248,3 +269,5 @@ def train(usemodel) -> bool:
     print("Finish Train")
     print(f"Total: {int(hours)}h{int(minutes)}m{seconds:.1f}s")
     print(f"Best val mIoU: {best_miou:.5f}")
+
+    return True
