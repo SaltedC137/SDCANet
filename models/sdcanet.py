@@ -154,10 +154,21 @@ class ASPP(nn.Module):
 
 class SDCANet(nn.Module):
     # res2net based encoder decoder
-    def __init__(self,num_classes):
+    def __init__(self,num_classes,in_channels):
         super(SDCANet, self).__init__()
         # ---- ResNet Backbone ----
         self.resnet = res2net50_v1b_26w_4s(pretrained=True)
+
+
+        if in_channels !=3:
+            old_conv = self.resnet.conv1[0]
+            self.resnet.conv1[0]=nn.Conv2d(in_channels,
+                                           out_channels=old_conv.out_channels,
+                                           kernel_size=old_conv.kernel_size,
+                                           stride=old_conv.stride,
+                                           padding=old_conv.padding,
+                                           bias=old_conv.bias is not None
+                                           )
 
         self._patch_resnet()
 
@@ -299,7 +310,7 @@ class SDCANet(nn.Module):
 
 
 if __name__ == '__main__':
-    model = SDCANet(num_classes=2)
+    model = SDCANet(num_classes=2,in_channels=3)
     model.eval() 
     dummy_input = torch.randn(2, 3, 256, 256) 
     with torch.no_grad():
