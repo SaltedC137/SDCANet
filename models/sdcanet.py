@@ -253,11 +253,11 @@ class SDCANet(nn.Module):
         x = self.resnet.bn1(x)
         x_half = self.resnet.relu(x)
 
-        x1 = self.resnet.maxpool(x_half)      # bs, 64, 88, 88
+        x1 = self.resnet.maxpool(x_half) # bs, 64, 88, 88
         x2 = self.resnet.layer1(x1)      # bs, 256, 88, 88
-        x3 = self.resnet.layer2(x2)     # bs, 512, 44, 44
-        x4 = self.resnet.layer3(x3)     # bs, 1024, 22, 22
-        x5 = self.resnet.layer4(x4)     # bs, 2048, 11, 11
+        x3 = self.resnet.layer2(x2)      # bs, 512, 44, 44
+        x4 = self.resnet.layer3(x3)      # bs, 1024, 22, 22
+        x5 = self.resnet.layer4(x4)      # bs, 2048, 11, 11
 
         x5_dem_1 = self.aspp(x5)
         x4_dem_1 = self.x4_dem_1(x4)

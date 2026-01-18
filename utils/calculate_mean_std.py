@@ -63,12 +63,11 @@ def calculate_mean_std(in_channels):
     snd_moment = torch.empty(in_channels)
 
     for images in tqdm(loader):
+
         # images shape: [batch, H, W, C] (since we didn't use ToTensor)
         # We need [C, H, W] for easier calculation or just flatten
-        
         b, h, w, c = images.shape
         nb_pixels = b * h * w
-        
         # Flatten: [Batch*H*W, C]
         flattened = images.view(-1, c)
         
