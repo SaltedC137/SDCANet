@@ -2,6 +2,7 @@ from interface.draw import plot_learning_curves
 from utils.model_enum import ModelType
 import config as cfg
 
+# draw curve
 
 def main():
     selected_model_type = ModelType.UNET

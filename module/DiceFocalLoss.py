@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class DiceFocalLoss(nn.Module):
+    # loss
     def __init__(self, weight_dice=0.5, weight_focal=0.5, 
                  focal_alpha=None, focal_gamma=2.0, smooth=1e-6,
                  class_num=1):

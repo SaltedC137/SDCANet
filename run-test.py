@@ -1,7 +1,7 @@
 from interface.test import test
 from utils.model_enum import ModelType
 import config as cfg
-
+# datum
 def main():
     selected_model_type = ModelType.SDCANet
     test(usemodel=lambda: selected_model_type.get_model(
