@@ -163,12 +163,12 @@ class SDCANet(nn.Module):
         if in_channels !=3:
             old_conv = self.resnet.conv1[0]
             self.resnet.conv1[0]=nn.Conv2d(in_channels,
-                                           out_channels=old_conv.out_channels,
-                                           kernel_size=old_conv.kernel_size,
-                                           stride=old_conv.stride,
-                                           padding=old_conv.padding,
-                                           bias=old_conv.bias is not None
-                                           )
+                                        out_channels=old_conv.out_channels,
+                                        kernel_size=old_conv.kernel_size,
+                                        stride=old_conv.stride,
+                                        padding=old_conv.padding,
+                                        bias=old_conv.bias is not None
+                                        )
 
         self._patch_resnet()
 
@@ -310,9 +310,9 @@ class SDCANet(nn.Module):
 
 
 if __name__ == '__main__':
-    model = SDCANet(num_classes=2,in_channels=3)
+    model = SDCANet(num_classes=2,in_channels=6)
     model.eval() 
-    dummy_input = torch.randn(2, 3, 256, 256) 
+    dummy_input = torch.randn(2, 6, 256, 256) 
     with torch.no_grad():
         output = model(dummy_input)
     print("Output shape:", output.shape)

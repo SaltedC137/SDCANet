@@ -32,14 +32,15 @@ def train(usemodel) -> bool:
 
     try:
         train_dataset = Datainit([cfg.TRAIN_ROOT, cfg.TRAIN_LABEL], 
-                                  get_training_augmentation(cfg.H_size),
-                                  class_num=cfg.class_num)
+                                get_training_augmentation(cfg.H_size),
+                                class_num=cfg.class_num)
+        
         val_dataset = Datainit([cfg.VAL_ROOT, cfg.VAL_LABEL], 
                                 get_validation_augmentation(cfg.W_size),
                                 class_num=cfg.class_num)
 
         train_loader = DataLoader(train_dataset, batch_size=cfg.BATCH_SIZE, 
-                                  shuffle=True, num_workers=8, drop_last=True,pin_memory=True)
+                                shuffle=True, num_workers=8, drop_last=True,pin_memory=True)
         val_loader = DataLoader(val_dataset, batch_size=cfg.BATCH_SIZE, 
                                 shuffle=False, num_workers=8,pin_memory=True)
     except Exception as e:

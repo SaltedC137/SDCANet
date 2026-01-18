@@ -29,7 +29,7 @@ class ModelType(Enum):
             elif self == ModelType.ABCNET:
                 return ABCNet(band=in_channels, n_classes=num_classes)
             elif self == ModelType.SDCANet:
-                return SDCANet(num_classes = num_classes)
+                return SDCANet(num_classes = num_classes,in_channels=in_channels)
             elif self == ModelType.DEEPLABV3:
                 return DeepLabV3Plus(num_classes = num_classes)
             elif self == ModelType.EFFICIENTUNET:

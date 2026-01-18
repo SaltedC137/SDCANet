@@ -3,14 +3,16 @@ from torch.utils.data import Dataset
 from PIL import Image
 import numpy as np
 import torch
+import tifffile
 
 class Datainit(torch.utils.data.Dataset):
-    def __init__(self, root_list, transform=None, class_num=1):
+    def __init__(self, root_list, transform=None, class_num=1,in_channels = 3):
 
         self.img_dir = root_list[0]
         self.label_dir = root_list[1]
         self.transform = transform
         self.class_num = class_num
+        self.in_channels = in_channels
         
         self.img_names = sorted([
             f for f in os.listdir(self.img_dir)
@@ -47,11 +49,23 @@ class Datainit(torch.utils.data.Dataset):
         img_path = os.path.join(self.img_dir, img_name)
         label_path = os.path.join(self.label_dir, label_name)
 
-        image = np.array(Image.open(img_path).convert('RGB'))
+
+
+        if self.in_channels > 3:
+            try:
+                image = tifffile.imread(img_path)
+            except Exception:
+                image = np.array(Image.open(img_path))
+            if image.ndim == 2:
+                image = image[:, :, None]
+            elif image.ndim == 3 and image.shape[0] == self.in_channels and image.shape[0] < image.shape[1]:
+                image = image.transpose(1, 2, 0)
+        else:
+            image = np.array(Image.open(img_path).convert('RGB'))
+        
         label = np.array(Image.open(label_path).convert('L')) 
-
+        
         if self.class_num == 2:
-
             label = (label > 0).astype(np.uint8)
         elif self.class_num == 1:
             if label.max() > 1:

@@ -1,0 +1,68 @@
+Date : 2026-01-18 10:58:44
+Directory : d:\.Project\.py\SDCANet
+Total : 34 files,  2382 codes, 170 comments, 652 blanks, all 3204 lines
+
+Languages
++------------------+------------+------------+------------+------------+------------+
+| language         | files      | code       | comment    | blank      | total      |
++------------------+------------+------------+------------+------------+------------+
+| Python           |         31 |      2,321 |        170 |        645 |      3,136 |
+| pip requirements |          1 |         55 |          0 |          1 |         56 |
+| Markdown         |          2 |          6 |          0 |          6 |         12 |
++------------------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                  | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                     |         34 |      2,382 |        170 |        652 |      3,204 |
+| . (Files)                                             |          6 |        207 |         35 |         54 |        296 |
+| .github                                               |          2 |          6 |          0 |          6 |         12 |
+| interface                                             |          5 |        490 |         17 |        131 |        638 |
+| models                                                |         12 |      1,247 |         91 |        345 |      1,683 |
+| models (Files)                                        |          9 |      1,020 |         42 |        286 |      1,348 |
+| models\backbones                                      |          3 |        227 |         49 |         59 |        335 |
+| module                                                |          3 |        148 |         24 |         40 |        212 |
+| utils                                                 |          6 |        284 |          3 |         76 |        363 |
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------+------------------+------------+------------+------------+------------+
+| filename                                              | language         | code       | comment    | blank      | total      |
++-------------------------------------------------------+------------------+------------+------------+------------+------------+
+| d:\.Project\.py\SDCANet\.github\CONTRIBUTING.md       | Markdown         |          0 |          0 |          1 |          1 |
+| d:\.Project\.py\SDCANet\.github\README.md             | Markdown         |          6 |          0 |          5 |         11 |
+| d:\.Project\.py\SDCANet\config.py                     | Python           |         46 |          0 |         14 |         60 |
+| d:\.Project\.py\SDCANet\interface\__init__.py         | Python           |          4 |          0 |          0 |          4 |
+| d:\.Project\.py\SDCANet\interface\draw.py             | Python           |         53 |          0 |         18 |         71 |
+| d:\.Project\.py\SDCANet\interface\predict.py          | Python           |        120 |          2 |         34 |        156 |
+| d:\.Project\.py\SDCANet\interface\test.py             | Python           |        108 |          0 |         26 |        134 |
+| d:\.Project\.py\SDCANet\interface\train.py            | Python           |        205 |         15 |         53 |        273 |
+| d:\.Project\.py\SDCANet\models\__init__.py            | Python           |         10 |          0 |          2 |         12 |
+| d:\.Project\.py\SDCANet\models\abcnet.py              | Python           |        265 |          3 |         63 |        331 |
+| d:\.Project\.py\SDCANet\models\backbones\__init__.py  | Python           |          2 |          0 |          0 |          2 |
+| d:\.Project\.py\SDCANet\models\backbones\mobilenet.py | Python           |         89 |         12 |         18 |        119 |
+| d:\.Project\.py\SDCANet\models\backbones\res2net.py   | Python           |        136 |         37 |         41 |        214 |
+| d:\.Project\.py\SDCANet\models\deeplabv3plus.py       | Python           |         95 |         10 |         25 |        130 |
+| d:\.Project\.py\SDCANet\models\efficientunet.py       | Python           |         84 |          6 |         18 |        108 |
+| d:\.Project\.py\SDCANet\models\linkent.py             | Python           |         92 |          6 |         32 |        130 |
+| d:\.Project\.py\SDCANet\models\sdcanet.py             | Python           |        234 |          7 |         85 |        326 |
+| d:\.Project\.py\SDCANet\models\segnet.py              | Python           |         99 |          0 |         17 |        116 |
+| d:\.Project\.py\SDCANet\models\unet.py                | Python           |         71 |          5 |         17 |         93 |
+| d:\.Project\.py\SDCANet\models\unetpp.py              | Python           |         70 |          5 |         27 |        102 |
+| d:\.Project\.py\SDCANet\module\DiceFocalLoss.py       | Python           |         59 |          6 |         16 |         81 |
+| d:\.Project\.py\SDCANet\module\FocalLoss.py           | Python           |         87 |         18 |         24 |        129 |
+| d:\.Project\.py\SDCANet\module\__init__.py            | Python           |          2 |          0 |          0 |          2 |
+| d:\.Project\.py\SDCANet\requirements.txt              | pip requirements |         55 |          0 |          1 |         56 |
+| d:\.Project\.py\SDCANet\run-draw.py                   | Python           |         18 |          0 |          9 |         27 |
+| d:\.Project\.py\SDCANet\run-predict.py                | Python           |         41 |          0 |         11 |         52 |
+| d:\.Project\.py\SDCANet\run-test.py                   | Python           |         36 |          0 |          8 |         44 |
+| d:\.Project\.py\SDCANet\run-train.py                  | Python           |         11 |         35 |         11 |         57 |
+| d:\.Project\.py\SDCANet\utils\Dataset.py              | Python           |         62 |          0 |         16 |         78 |
+| d:\.Project\.py\SDCANet\utils\Metrics.py              | Python           |        108 |          0 |         37 |        145 |
+| d:\.Project\.py\SDCANet\utils\__init__.py             | Python           |          6 |          0 |          1 |          7 |
+| d:\.Project\.py\SDCANet\utils\augmentation.py         | Python           |         21 |          0 |          2 |         23 |
+| d:\.Project\.py\SDCANet\utils\model_enum.py           | Python           |         33 |          3 |          6 |         42 |
+| d:\.Project\.py\SDCANet\utils\savedata.py             | Python           |         54 |          0 |         14 |         68 |
+| Total                                                 |                  |      2,382 |        170 |        652 |      3,204 |
++-------------------------------------------------------+------------------+------------+------------+------------+------------+
