@@ -5,6 +5,8 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import tifffile
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as cfg
 
 class MeanStdCalculator(torch.utils.data.Dataset):

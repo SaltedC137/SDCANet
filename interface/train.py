@@ -32,12 +32,14 @@ def train(usemodel) -> bool:
 
     try:
         train_dataset = Datainit([cfg.TRAIN_ROOT, cfg.TRAIN_LABEL], 
-                                get_training_augmentation(cfg.H_size),
-                                class_num=cfg.class_num)
+                                get_training_augmentation(cfg.H_size,mean=cfg.NORM_MEAN, std=cfg.NORM_STD),
+                                class_num=cfg.class_num,
+                                in_channels=cfg.IN_CHANNELS)
         
         val_dataset = Datainit([cfg.VAL_ROOT, cfg.VAL_LABEL], 
-                                get_validation_augmentation(cfg.W_size),
-                                class_num=cfg.class_num)
+                                get_validation_augmentation(cfg.H_size,mean=cfg.NORM_MEAN, std=cfg.NORM_STD),
+                                class_num=cfg.class_num,
+                                in_channels=cfg.IN_CHANNELS)
 
         train_loader = DataLoader(train_dataset, batch_size=cfg.BATCH_SIZE, 
                                 shuffle=True, num_workers=8, drop_last=True,pin_memory=True)
