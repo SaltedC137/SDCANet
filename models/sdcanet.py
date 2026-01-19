@@ -158,17 +158,22 @@ class SDCANet(nn.Module):
         super(SDCANet, self).__init__()
         # ---- ResNet Backbone ----
         self.resnet = res2net50_v1b_26w_4s(pretrained=True)
-
-
-        if in_channels !=3:
+        # pretrained model for RGB
+        if in_channels != 3:
             old_conv = self.resnet.conv1[0]
-            self.resnet.conv1[0]=nn.Conv2d(in_channels,
-                                        out_channels=old_conv.out_channels,
-                                        kernel_size=old_conv.kernel_size,
-                                        stride=old_conv.stride,
-                                        padding=old_conv.padding,
-                                        bias=old_conv.bias is not None
-                                        )
+            new_conv = nn.Conv2d(in_channels,
+                                out_channels=old_conv.out_channels,
+                                kernel_size=old_conv.kernel_size,
+                                stride=old_conv.stride,
+                                padding=old_conv.padding,
+                                bias=old_conv.bias is not None
+                                )
+            with torch.no_grad():
+                new_conv.weight[:, :3, :, :] = old_conv.weight
+                if in_channels > 3:
+                     new_conv.weight[:, 3:, :, :] = torch.mean(old_conv.weight, dim=1, keepdim=True).repeat(1, in_channels - 3, 1, 1)
+                
+            self.resnet.conv1[0] = new_conv
 
         self._patch_resnet()
 
@@ -194,7 +199,6 @@ class SDCANet(nn.Module):
         self.sdb_x4_x3_x2_x1 = StripDiffBlock(64, dilation=1)
 
         self.sdb_x5_x4_x3_x2_x1 = StripDiffBlock(64, dilation=1)
-        #
 
         self.level3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
         self.level2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))

@@ -25,7 +25,10 @@ def predict(usemodel) -> bool:
     print(f"found {len(test_images)}  -tif | Data Path: {config.TEST_ROOT}")
 
     test_loader = DataLoader(
-        Datainit([config.TEST_ROOT, config.TEST_LABEL], get_validation_augmentation(config.H_size)),
+        Datainit([config.TEST_ROOT, config.TEST_LABEL], 
+                get_validation_augmentation(config.H_size),
+                in_channels=cfg.IN_CHANNELS,
+                class_num=cfg.class_num),
         batch_size=1, shuffle=False, num_workers=0
     )
     print(f"DataSize: {len(test_loader)}")

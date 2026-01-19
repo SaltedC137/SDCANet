@@ -28,7 +28,10 @@ def test(usemodel) ->bool:
     BATCH_SIZE = config.BATCH_SIZE
     miou_list = [0]
 
-    my_test = Datainit([config.TEST_ROOT, config.TEST_LABEL], get_validation_augmentation(config.H_size))
+    my_test = Datainit([config.TEST_ROOT, config.TEST_LABEL], 
+                       get_validation_augmentation(config.H_size, mean=config.NORM_MEAN, std=config.NORM_STD),
+                       in_channels=config.IN_CHANNELS,
+                       class_num=config.class_num)
     test_data = DataLoader(my_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     net = usemodel()
