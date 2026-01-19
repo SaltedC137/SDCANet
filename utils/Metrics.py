@@ -27,10 +27,10 @@ def calc_semantic_segmentation_confusion(pred_labels, gt_labels, n_class, ignore
 
         if valid_gt.min() < 0 or valid_gt.max() >= n_class:
             raise ValueError(f"Ground truth label out of range [0, {n_class}). "
-                             f"Found values: min={valid_gt.min()}, max={valid_gt.max()}")
+                            f"Found values: min={valid_gt.min()}, max={valid_gt.max()}")
         if valid_pred.min() < 0 or valid_pred.max() >= n_class:
             raise ValueError(f"Prediction label out of range [0, {n_class}). "
-                             f"Found values: min={valid_pred.min()}, max={valid_pred.max()}")
+                            f"Found values: min={valid_pred.min()}, max={valid_pred.max()}")
 
         indices = n_class * valid_gt.astype(int) + valid_pred.astype(int)
         confusion += np.bincount(indices, minlength=n_class**2).reshape(n_class, n_class)

@@ -60,6 +60,11 @@ class Datainit(torch.utils.data.Dataset):
                 image = image[:, :, None]
             elif image.ndim == 3 and image.shape[0] == self.in_channels and image.shape[0] < image.shape[1]:
                 image = image.transpose(1, 2, 0)
+            
+            # Convert int16/uint16 to float32 to avoid albumentations error
+            if image.dtype == np.int16 or image.dtype == np.uint16:
+                image = image.astype(np.float32)
+                
         else:
             image = np.array(Image.open(img_path).convert('RGB'))
         
