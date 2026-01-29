@@ -66,11 +66,15 @@ class StripDiffBlock(nn.Module):
         p = (dilation * (k - 1)) // 2
 
         self.conv_h = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(1, k), padding=(0, p), dilation=(1, dilation)),
+            nn.Conv2d(in_channels, in_channels, kernel_size=(1, k), 
+                    padding=(0, p), 
+                    dilation=(1, dilation)),
             nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
         
         self.conv_v = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(k, 1), padding=(p, 0), dilation=(dilation, 1)),
+            nn.Conv2d(in_channels, in_channels, kernel_size=(k, 1), 
+                    padding=(p, 0), 
+                    dilation=(dilation, 1)),
             nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
         
         self.conv_std = nn.Sequential(
