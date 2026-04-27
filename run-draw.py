@@ -4,24 +4,27 @@ import config as cfg
 
 # draw curve
 
+LOG_INDEX = None  # None: use latest logs, 0: *_log.csv, 1: *_log_1.csv, ...
+
 def main():
-    selected_model_type = ModelType.UNET
-    plot_learning_curves(selected_model_type)
-
-    selected_model_type = ModelType.UNET_PLUS_PLUS
-    plot_learning_curves(selected_model_type)
-
     selected_model_type = ModelType.SDCANet
-    plot_learning_curves(selected_model_type)
+    plot_learning_curves(selected_model_type, log_index=LOG_INDEX)
 
-    selected_model_type = ModelType.SEGNET
-    plot_learning_curves(selected_model_type)
+    # selected_model_type = ModelType.UNET
+    # plot_learning_curves(selected_model_type, log_index=LOG_INDEX)
 
-    selected_model_type = ModelType.LINKNET
-    plot_learning_curves(selected_model_type)
+    # selected_model_type = ModelType.UNET_PLUS_PLUS
+    # plot_learning_curves(selected_model_type, log_index=LOG_INDEX)
 
-    selected_model_type = ModelType.ABCNET
-    plot_learning_curves(selected_model_type)
+
+    # selected_model_type = ModelType.SEGNET
+    # plot_learning_curves(selected_model_type, log_index=LOG_INDEX)
+
+    # selected_model_type = ModelType.LINKNET
+    # plot_learning_curves(selected_model_type, log_index=LOG_INDEX)
+
+    # selected_model_type = ModelType.ABCNET
+    # plot_learning_curves(selected_model_type, log_index=LOG_INDEX)
 
 
 if __name__ == "__main__":

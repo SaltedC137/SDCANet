@@ -9,6 +9,7 @@ import time
 import sys
 from utils.savedata import save_model
 from utils.savedata import log_single_epoch
+from utils.savedata import get_next_log_filename
 from utils.Dataset import Datainit
 from utils.augmentation import get_training_augmentation
 from utils.augmentation import get_validation_augmentation
@@ -26,7 +27,7 @@ from module.DiceFocalLoss import DiceFocalLoss
 def train(usemodel) -> bool:
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"device is {device}")
+    print(f"Device is {device}")
 
     # Load Data
 
@@ -58,6 +59,11 @@ def train(usemodel) -> bool:
 
     model = usemodel()
     model_name = model.__class__.__name__
+
+    train_log_filename = get_next_log_filename(model_name=model_name, phase='train')
+    val_log_filename = get_next_log_filename(model_name=model_name, phase='val')
+    print(f"Train log file: {cfg.SAVE_PATH}{model_name}/{train_log_filename}")
+    print(f"Val log file: {cfg.SAVE_PATH}{model_name}/{val_log_filename}")
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -162,7 +168,8 @@ def train(usemodel) -> bool:
             pixel_accuracy=train_pixel_acc,
             loss=avg_train_loss,
             model_name=model_name,
-            filename=f"{model_name}_train_log.csv"
+            filename=train_log_filename,
+            phase='train'
         )
 
         # validate
@@ -218,7 +225,8 @@ def train(usemodel) -> bool:
             pixel_accuracy=val_pixel_acc,
             loss=avg_val_loss,
             model_name=model_name,
-            filename=f"{model_name}_val_log.csv"
+            filename=val_log_filename,
+            phase='val'
         )
 
         save_model(

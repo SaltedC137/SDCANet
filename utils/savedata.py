@@ -36,14 +36,14 @@ def save_model(model, model_name, save_dir=cfg.SAVE_PATH, epoch=None,is_best = F
     return save_path
 
 def log_single_epoch(epoch, miou, pixel_accuracy, loss, model_name, save_dir=cfg.SAVE_PATH, filename=
-None):
+None, phase='train'):
     
     save_dir = save_dir + model_name  + "/"
     os.makedirs(save_dir, exist_ok=True)
 
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{model_name}_training_log_{timestamp}.csv"
+        filename = f"{model_name}_{phase}_log_{timestamp}.csv"
 
     save_path = os.path.join(save_dir, filename)
 
@@ -62,7 +62,25 @@ None):
             'pixel_accuracy': pixel_accuracy,
             'loss': loss,
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'phase': 'train'
+            'phase': phase
         })
 
     return save_path
+
+
+def get_next_log_filename(model_name, phase, save_dir=cfg.SAVE_PATH):
+    save_dir = os.path.join(save_dir, model_name)
+    os.makedirs(save_dir, exist_ok=True)
+
+    base_filename = f"{model_name}_{phase}_log.csv"
+    base_path = os.path.join(save_dir, base_filename)
+    if not os.path.exists(base_path):
+        return base_filename
+
+    index = 1
+    while True:
+        filename = f"{model_name}_{phase}_log_{index}.csv"
+        path = os.path.join(save_dir, filename)
+        if not os.path.exists(path):
+            return filename
+        index += 1

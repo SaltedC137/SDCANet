@@ -164,10 +164,11 @@ class AttentionEnhancementModule(nn.Module):
 
 
 class ContextPath(nn.Module):
-    def __init__(self, pretrained=True, *args, **kwargs):
+    def __init__(self, in_channels=3, pretrained=True, *args, **kwargs):
         super(ContextPath, self).__init__()
         self.resnet = timm.create_model('swsl_resnet18', features_only=True, output_stride=32,
-                                        out_indices=(2, 3, 4), pretrained=pretrained)
+                                        out_indices=(2, 3, 4), pretrained=pretrained, in_chans=in_channels)
+        
         self.arm16 = AttentionEnhancementModule(256, 128)
         self.arm32 = AttentionEnhancementModule(512, 128)
         self.conv_head32 = ConvBNReLU(128, 128, ks=3, stride=1, padding=1)
@@ -216,9 +217,9 @@ class ContextPath(nn.Module):
 
 
 class SpatialPath(nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, in_channels=3, *args, **kwargs):
         super(SpatialPath, self).__init__()
-        self.conv1 = ConvBNReLU(3, 64, ks=7, stride=2, padding=3)
+        self.conv1 = ConvBNReLU(in_channels, 64, ks=7, stride=2, padding=3)
         self.conv2 = ConvBNReLU(64, 64, ks=3, stride=2, padding=1)
         self.conv3 = ConvBNReLU(64, 64, ks=3, stride=2, padding=1)
         self.conv_out = ConvBNReLU(64, 128, ks=1, stride=1, padding=0)
@@ -287,8 +288,8 @@ class ABCNet(nn.Module):
     def __init__(self, band=3, n_classes=8, pretrained=False):
         super(ABCNet, self).__init__()
         self.name = 'ABCNet'
-        self.cp = ContextPath(pretrained)
-        self.sp = SpatialPath()
+        self.cp = ContextPath(in_channels=band, pretrained=pretrained)
+        self.sp = SpatialPath(in_channels=band)
         self.fam = FeatureAggregationModule(256, 256)
         self.conv_out = Output(256, 256, n_classes, up_factor=8)
         if self.training:
