@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: SDCANet
+message: If you use this software, please cite it as follows.
+type: software
+authors:
+  - given-names: Aska
+    family-names: Lyn
+    email: saltedc137@gmail.com
+  - name: serendipity-sketch
+    email: 2432160242@qq.com
