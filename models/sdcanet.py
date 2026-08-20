@@ -173,7 +173,8 @@ class StripDiffBlock(nn.Module):
     def forward(self, high_feat, low_feat):
         high_up = F.interpolate(high_feat, size=low_feat.shape[2:], mode='bilinear', align_corners=True)
         diff_cat = torch.cat([high_up - low_feat, torch.abs(high_up - low_feat),
-                              high_up * low_feat, high_up / (low_feat + 1e-5)], dim=1)
+                              high_up * low_feat,
+                              high_up * torch.sign(low_feat.detach()) / low_feat.detach().abs().clamp(min=1e-2)], dim=1)
         diff = self.diff_proj(diff_cat)
 
         feat_h = [conv_h(diff) for conv_h in self.conv_h_list]
