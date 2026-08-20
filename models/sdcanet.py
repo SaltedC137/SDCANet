@@ -1,3 +1,24 @@
+"""
+SDCANet: Strip Difference and Coordinate Attention Network
+for fine elongated gully erosion segmentation.
+
+Key design choices:
+- Res2Net50 backbone with dilated layers (output stride 8) to preserve spatial details.
+- StripDiffBlock:
+    * Rich difference features: signed diff, absolute diff, product, ratio.
+    * Multi-scale horizontal/vertical strip convolutions (k = 3,5,7,9) to capture long-range line structures.
+    * Standard dilated convolution for local context.
+    * Gated fusion with low-level features and residual connection.
+    * Coordinate Attention to enhance row/column dependencies.
+- Dense cross-scale connections between StripDiffBlocks to aggregate multi-resolution context.
+- Mish activation used throughout decoder for smoother gradients.
+- Multi-channel input support (e.g., 6 channels) by extending the first conv weights.
+- Deep supervision auxiliary output during training for improved gradient flow.
+
+The network is designed to segment narrow, elongated erosion gullies that suffer from
+low contrast, variable orientation, and easy fragmentation.
+"""
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F

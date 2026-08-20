@@ -21,11 +21,11 @@ def main():
     #     num_classes=cfg.NUM_CLASSES
     # ))
 
-    # selected_model_type = ModelType.LINKNET
-    # test(usemodel=lambda: selected_model_type.get_model(
-    #     in_channels=cfg.IN_CHANNELS,
-    #     num_classes=cfg.NUM_CLASSES
-    # ))
+    selected_model_type = ModelType.LINKNET
+    test(usemodel=lambda: selected_model_type.get_model(
+        in_channels=cfg.IN_CHANNELS,
+        num_classes=cfg.NUM_CLASSES
+    ))
 
     # selected_model_type = ModelType.UNET
     # test(usemodel=lambda: selected_model_type.get_model(
@@ -34,11 +34,11 @@ def main():
     # ))
 
 
-    selected_model_type = ModelType.UNET_PLUS_PLUS
-    test(usemodel=lambda: selected_model_type.get_model(
-        in_channels=cfg.IN_CHANNELS,
-        num_classes=cfg.NUM_CLASSES
-    ))
+    # selected_model_type = ModelType.UNET_PLUS_PLUS
+    # test(usemodel=lambda: selected_model_type.get_model(
+    #     in_channels=cfg.IN_CHANNELS,
+    #     num_classes=cfg.NUM_CLASSES
+    # ))
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,57 @@
+"""
+Grad-CAM (Gradient-weighted Class Activation Mapping) — model decision
+visualization for semantic segmentation.
+
+Why
+---
+Area-overlap metrics (mIoU, Precision, Recall, F1, Kappa) judge region quality
+but say nothing about WHY the model labels a pixel as foreground. Grad-CAM
+highlights which input regions drive the model's decision for a given class,
+providing qualitative evidence for "weak boundary recovery" and "gully
+connectivity" claims (reviewer request #10).
+
+Approach
+--------
+1. Register forward/backward hooks on the target layer (default: the LAST
+   Conv2d of the model, e.g. SDCANet's `final_cls` input features).
+2. Forward-pass the image, take the score of `target_class` (foreground, 1)
+   over all spatial positions, and backpropagate.
+3. Pool the input gradients globally:  alpha_c = mean(H, W) of grad
+   (global-average-pooled gradients, the class-discriminative channel weights).
+4. CAM = ReLU( sum_c alpha_c * A_c ), where A are the layer activations
+   (ReLU keeps only positive contributors), min-max normalized to [0, 1].
+5. Overlay the upsampled CAM (jet, alpha 0.45) on the denormalized RGB image
+   and draw the ground-truth boundary as a white contour.
+
+Usage
+-----
+Auto (during test):  python run-test.py
+    writes output/<model>/gradcam/gradcam_0..2.png for the first 3 samples.
+
+Manual API:
+    from utils.GradCAM import GradCAM, save_gradcam_heatmaps
+
+    cam = GradCAM(net)(img_tensor)                             # default layer
+    cam = GradCAM(net, target_layer='final_cls')(img_tensor)   # by name
+    cam = GradCAM(net, target_layer=2)(img_tensor)             # by conv index
+    cam = GradCAM(net, target_layer=net.module)(img_tensor)    # by module
+
+    save_gradcam_heatmaps(net, image_tensors, label_masks, 'SDCANet')
+
+Compatibility
+-------------
+- Any number of input channels (works with the 9-channel dataset; RGB
+  background = first 3 channels denormalized with the augmentation mean/std).
+- Deep-supervision models returning (out, aux) tuples: main output is used.
+- nn.DataParallel models: automatically unwrapped to model.module.
+- Model train/eval state is preserved; hooks are always cleaned up.
+
+Reference
+---------
+Selvaraju et al., "Grad-CAM: Visual Explanations from Deep Networks via
+Gradient-based Localization", ICCV 2017.
+"""
+
 import os
 import numpy as np
 import cv2
