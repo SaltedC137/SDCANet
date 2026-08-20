@@ -1,21 +1,12 @@
 *.pth  
 *.tif 
 
-
 __pycache__ 
-
-.vscode/
-
-
 *.csv
 *_summary.png
 *.zip
+*.tar.gz
 
 
-
-
-# output
 output/
-
-# vscode counter
-.VScodeCounter
+.vscode/

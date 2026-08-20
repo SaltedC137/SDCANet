@@ -19,6 +19,18 @@ class h_swish(nn.Module):
     def forward(self, x):
         return x * self.sigmoid(x)
 
+
+# i wanna change it
+
+# class h_mish(nn.Module):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+#     def forward(self,x):
+#         x = x * (torch.tanh(F.softplus(x)))
+
+
+
 # CA attention
 class CoordAtt(nn.Module):
     def __init__(self, inp, oup, reduction=32):

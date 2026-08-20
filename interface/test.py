@@ -4,6 +4,7 @@ from utils.Metrics import *
 import numpy as np
 from torch.utils.data import DataLoader
 import config
+import config as cfg
 import glob
 import time
 import os
@@ -26,9 +27,8 @@ def test(usemodel) ->bool:
     gc.collect()
 
     BATCH_SIZE = config.BATCH_SIZE
-    miou_list = [0]
 
-    my_test = Datainit([config.TEST_ROOT, config.TEST_LABEL], 
+    my_test = Datainit([config.TEST_ROOT, config.TEST_LABEL],
                        get_validation_augmentation(config.H_size, mean=config.NORM_MEAN, std=config.NORM_STD),
                        in_channels=config.IN_CHANNELS,
                        class_num=config.class_num)
@@ -58,55 +58,33 @@ def test(usemodel) ->bool:
     net.load_state_dict(state_dict)  
     net = net.to(device)
 
-    error = 0
-    train_mpa = 0
-    train_miou = 0
-    train_class_acc = 0
-    train_pa = 0
-    train_recall=0
-    train_f1=0
-    train_precision=0
-    train_kappa=0
-    for i, sample in enumerate(test_data):
+    pre_labels = []
+    true_labels = []
+    for sample in test_data:
         data = Variable(sample['img']).to(device)
         label = Variable(sample['label']).to(device)
         out = net(data)
         out = F.log_softmax(out, dim=1)
 
         pre_label = out.max(dim=1)[1].data.cpu().numpy()
-        pre_label = [i for i in pre_label]
+        pre_labels.extend(pre_label)
 
         true_label = label.data.cpu().numpy()
-        true_label = [i for i in true_label]
+        true_labels.extend(true_label)
 
-        eval_metrix = eval_semantic_segmentation(pre_label, true_label,cfg.class_num)
-        train_mpa = eval_metrix['mean_class_accuracy'] + train_mpa
-        train_miou = eval_metrix['miou'] + train_miou
-        train_pa = eval_metrix['pixel_accuracy'] + train_pa
-        train_recall=eval_metrix["recall"]+train_recall
-        train_f1=eval_metrix["f1"]+train_f1
-        train_precision=eval_metrix["precision"]+train_precision
-        train_kappa=eval_metrix["kappa"]+train_kappa
-
-
-        if len(eval_metrix['class_accuracy']) < config.class_num:             
-            eval_metrix['class_accuracy'] = 0
-            train_class_acc = train_class_acc + eval_metrix['class_accuracy']
-            error += 1
-        else:
-            train_class_acc = train_class_acc + eval_metrix['class_accuracy']
-
-        print(eval_metrix['class_accuracy'], '================', i)
-
+    eval_metrix = eval_semantic_segmentation(pre_labels, true_labels, cfg.class_num)
+    precision = np.nan_to_num(eval_metrix['precision_per_class'][1], nan=0.0)
+    recall = np.nan_to_num(eval_metrix['recall_per_class'][1], nan=0.0)
+    f1 = np.nan_to_num(eval_metrix['f1_per_class'][1], nan=0.0)
 
     result_data = {
         'model_name': net_name,
-        'test_miou': train_miou / (len(test_data) - error),
-        'test_accuracy': train_pa / (len(test_data) - error),
-        'test_recall': train_recall / (len(test_data) - error),
-        'test_f1': train_f1 / (len(test_data) - error),
-        'test_precision': train_precision / (len(test_data) - error),
-        'test_kappa': train_kappa / (len(test_data) - error)
+        'test_miou': eval_metrix['miou'],
+        'test_accuracy': eval_metrix['pixel_accuracy'],
+        'test_recall': recall,
+        'test_f1': f1,
+        'test_precision': precision,
+        'test_kappa': eval_metrix['kappa']
     }
 
     csv_file_path = cfg.test_result
@@ -121,17 +99,15 @@ def test(usemodel) ->bool:
 
     epoch_str = 'model_name {}, test_miou: {:.5f}, test_accuracy: {:.5f}, test_recall: {:.5f}, test_f1:{:.5f}, test_precision: {:.5f}, test_kappa: {:.5f}'.format(
         net_name,
-        train_miou / (len(test_data) - error),
-        train_pa / (len(test_data) - error),
-        train_recall / (len(test_data) - error),
-        train_f1 / (len(test_data) - error),
-        train_precision / (len(test_data) - error),
-        train_kappa / (len(test_data) - error)
+        eval_metrix['miou'],
+        eval_metrix['pixel_accuracy'],
+        recall,
+        f1,
+        precision,
+        eval_metrix['kappa']
     )
 
-    if train_miou / (len(test_data) - error) > max(miou_list):
-        miou_list.append(train_miou / (len(test_data) - error))
-        print(epoch_str + '==========last')
-    
+    print(epoch_str)
+
     del net
     torch.cuda.empty_cache()

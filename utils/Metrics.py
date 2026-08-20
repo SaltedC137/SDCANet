@@ -1,6 +1,6 @@
 import numpy as np
 
-IGNORE_LABEL = 255  
+IGNORE_LABEL = 255
 def calc_semantic_segmentation_confusion(pred_labels, gt_labels, n_class, ignore_label=IGNORE_LABEL):
 
     if len(pred_labels) != len(gt_labels):
@@ -23,7 +23,7 @@ def calc_semantic_segmentation_confusion(pred_labels, gt_labels, n_class, ignore
         valid_pred = pred_label[valid_mask]
 
         if valid_gt.size == 0:
-            continue  
+            continue
 
         if valid_gt.min() < 0 or valid_gt.max() >= n_class:
             raise ValueError(f"Ground truth label out of range [0, {n_class}). "
@@ -105,41 +105,8 @@ def eval_semantic_segmentation(pred_labels, gt_labels, n_class, ignore_label=IGN
         'pixel_accuracy': pixel_accuracy,
         'class_accuracy': class_accuracy,
         'mean_class_accuracy': np.nanmean(class_accuracy),
-        'f1': np.nanmean(f1),
-        'precision': np.nanmean(precision),
-        'recall': np.nanmean(recall),
-        'kappa': kappa
-    }
-
-
-def eval_binary_segmentation(pred_labels, gt_labels, ignore_label=255):
-
-    total_intersection = 0
-    total_union = 0
-    total_correct = 0
-    total_pixels = 0
-    
-    for pred, true in zip(pred_labels, gt_labels):
-        mask = (true != ignore_label)
-        if mask.sum() == 0:
-            continue
-            
-        pred_masked = pred[mask]
-        true_masked = true[mask]
-        
-        intersection = ((pred_masked == 1) & (true_masked == 1)).sum()
-        union = ((pred_masked == 1) | (true_masked == 1)).sum()
-        
-        total_intersection += intersection
-        total_union += union
-        
-        total_correct += (pred_masked == true_masked).sum()
-        total_pixels += mask.sum()
-    
-    miou = total_intersection / total_union if total_union > 0 else 0
-    pixel_acc = total_correct / total_pixels if total_pixels > 0 else 0
-    
-    return {
-        'miou': float(miou),
-        'pixel_accuracy': float(pixel_acc)
+        'kappa': kappa,
+        'f1_per_class': f1,
+        'precision_per_class': precision,
+        'recall_per_class': recall
     }

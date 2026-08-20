@@ -123,7 +123,7 @@ def train(usemodel) -> bool:
                 out = F.interpolate(out, size=img_label.shape[-2:], mode='bilinear', align_corners=True)
 
             if aux_out is not None and aux_out.shape[-2:] != img_label.shape[-2:]:
-                aux_out = F.interpolate(aux_out , size=img_label.shape, mode='bilinear', align_corners=True)
+                aux_out = F.interpolate(aux_out , size=img_label.shape[-2:], mode='bilinear', align_corners=True)
 
             if img_label.ndim == 4 and img_label.shape[1] == 1:
                 target = img_label.squeeze(1).long()
@@ -155,10 +155,9 @@ def train(usemodel) -> bool:
         avg_train_loss = total_train_loss / len(train_loader)
         
         # train target
-        if cfg.class_num == 2:
-            train_metrics = eval_semantic_segmentation(train_pred_list, train_true_list, 
-                                                      n_class=cfg.class_num, ignore_label=255)
-            
+        train_metrics = eval_semantic_segmentation(train_pred_list, train_true_list,
+                                                  n_class=cfg.class_num, ignore_label=255)
+
         train_miou = train_metrics['miou']
         train_pixel_acc = train_metrics.get('pixel_accuracy', 0.0)
 
@@ -211,9 +210,8 @@ def train(usemodel) -> bool:
 
         avg_val_loss = total_val_loss / len(val_loader)
 
-        if cfg.class_num == 2:
-            val_metrics = eval_semantic_segmentation(val_pred_list, val_true_list, 
-                                                    n_class=cfg.class_num, ignore_label=255)
+        val_metrics = eval_semantic_segmentation(val_pred_list, val_true_list,
+                                                n_class=cfg.class_num, ignore_label=255)
 
         val_miou = val_metrics['miou']
         val_pixel_acc = val_metrics.get('pixel_accuracy', 0.0)
