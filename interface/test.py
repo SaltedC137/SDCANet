@@ -5,6 +5,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 import config
 import config as cfg
+from utils.GradCAM import save_gradcam_heatmaps
 import glob
 import time
 import os
@@ -60,6 +61,7 @@ def test(usemodel) ->bool:
 
     pre_labels = []
     true_labels = []
+    sample_imgs = []
     for sample in test_data:
         data = Variable(sample['img']).to(device)
         label = Variable(sample['label']).to(device)
@@ -72,10 +74,15 @@ def test(usemodel) ->bool:
         true_label = label.data.cpu().numpy()
         true_labels.extend(true_label)
 
+        if len(sample_imgs) < 3:
+            sample_imgs.extend(sample['img'].cpu())
+
     eval_metrix = eval_semantic_segmentation(pre_labels, true_labels, cfg.class_num)
     precision = np.nan_to_num(eval_metrix['precision_per_class'][1], nan=0.0)
     recall = np.nan_to_num(eval_metrix['recall_per_class'][1], nan=0.0)
     f1 = np.nan_to_num(eval_metrix['f1_per_class'][1], nan=0.0)
+    boundary_iou = calc_boundary_iou(pre_labels, true_labels)
+    cldice = calc_cldice(pre_labels, true_labels)
 
     result_data = {
         'model_name': net_name,
@@ -84,30 +91,37 @@ def test(usemodel) ->bool:
         'test_recall': recall,
         'test_f1': f1,
         'test_precision': precision,
-        'test_kappa': eval_metrix['kappa']
+        'test_kappa': eval_metrix['kappa'],
+        'test_boundary_iou': boundary_iou,
+        'test_cldice': cldice
     }
 
     csv_file_path = cfg.test_result
     write_header = not os.path.exists(csv_file_path)    
     with open(csv_file_path, 'a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['model_name', 'test_miou', 'test_accuracy', 'test_recall', 'test_f1','test_precision', 'test_kappa']
+        fieldnames = ['model_name', 'test_miou', 'test_accuracy', 'test_recall', 'test_f1','test_precision', 'test_kappa', 'test_boundary_iou', 'test_cldice']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         if write_header:
             writer.writeheader(result_data)
         writer.writerow(result_data)
 
-    epoch_str = 'model_name {}, test_miou: {:.5f}, test_accuracy: {:.5f}, test_recall: {:.5f}, test_f1:{:.5f}, test_precision: {:.5f}, test_kappa: {:.5f}'.format(
+    epoch_str = 'model_name {}, test_miou: {:.5f}, test_accuracy: {:.5f}, test_recall: {:.5f}, test_f1:{:.5f}, test_precision: {:.5f}, test_kappa: {:.5f}, test_boundary_iou: {:.5f}, test_cldice: {:.5f}'.format(
         net_name,
         eval_metrix['miou'],
         eval_metrix['pixel_accuracy'],
         recall,
         f1,
         precision,
-        eval_metrix['kappa']
+        eval_metrix['kappa'],
+        boundary_iou,
+        cldice
     )
 
     print(epoch_str)
+
+    save_gradcam_heatmaps(net, sample_imgs[:3], true_labels[:3], net_name,
+                          mean=cfg.NORM_MEAN, std=cfg.NORM_STD)
 
     del net
     torch.cuda.empty_cache()

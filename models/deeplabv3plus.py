@@ -70,10 +70,10 @@ class ASPP(nn.Module):
 
 
 class DeepLabV3Plus(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, in_channels=3):
         super(DeepLabV3Plus, self).__init__()
-        # self.resnet = models.resnet50(pretrained=False) 
-        self.resnet = mobilenet_v2(pretrained=False)
+        # self.resnet = models.resnet50(pretrained=False)
+        self.resnet = mobilenet_v2(pretrained=False, num_classes=num_classes, in_channels=in_channels)
 
         self.layer0 = nn.Sequential(self.resnet.features[0], self.resnet.features[1])
         self.layer1 = nn.Sequential(self.resnet.features[2], self.resnet.features[3], self.resnet.features[4],
@@ -101,10 +101,10 @@ class DeepLabV3Plus(nn.Module):
         )
     def forward(self, x):
         x0 = self.layer0(x)
-        x1 = self.layer1(x0)
-        x2 = self.layer2(x1)
-        x3 = self.layer3(x2)
-        x4 = self.layer4(x3)
+        x = self.layer1(x0)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x4 = self.layer4(x)
         x_aspp = self.aspp(x4)
         x_aspp = self.ca1(x_aspp) * x_aspp
         x_aspp = self.sa1(x_aspp) * x_aspp

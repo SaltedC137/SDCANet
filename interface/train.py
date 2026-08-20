@@ -104,6 +104,11 @@ def train(usemodel) -> bool:
         total_train_loss = 0.0
         train_pred_list = []
         train_true_list = []
+
+        if torch.cuda.is_available():
+            gpu_used = torch.cuda.memory_allocated() / 1024 ** 2
+            gpu_free = torch.cuda.mem_get_info()[0] / 1024 ** 2
+            print(f'GPU memory used: {gpu_used:.1f} MiB, free: {gpu_free:.1f} MiB')
         
         for i, sample in enumerate(train_loader):
             img_data = sample["img"].to(device)

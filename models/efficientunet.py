@@ -35,13 +35,26 @@ class UpBlock(nn.Module):
         return self.conv(x)
 
 class EfficientUNet(nn.Module):
-    def __init__(self, encoder_name='efficientnet-b4', num_classes=1, use_mixed_activation=False):
+    def __init__(self, encoder_name='efficientnet-b4', num_classes=1, use_mixed_activation=False, in_channels=3):
         super().__init__()
         self.num_classes = num_classes
-        
-        self.encoder = EfficientNet.from_pretrained(encoder_name)
-        
-        dummy = torch.zeros(1, 3, 64, 64)
+
+        try:
+            self.encoder = EfficientNet.from_pretrained(encoder_name)
+        except Exception:
+            self.encoder = EfficientNet.from_name(encoder_name)
+            print(f'pretrained weights for {encoder_name} unavailable, using random init')
+
+        if in_channels != 3:
+            old_conv = self.encoder._conv_stem
+            new_conv = nn.Conv2d(in_channels, old_conv.out_channels, old_conv.kernel_size,
+                                 old_conv.stride, old_conv.padding, bias=False)
+            with torch.no_grad():
+                new_conv.weight[:, :3] = old_conv.weight
+                new_conv.weight[:, 3:] = old_conv.weight.mean(dim=1, keepdim=True).expand(-1, in_channels - 3, -1, -1)
+            self.encoder._conv_stem = new_conv
+
+        dummy = torch.zeros(1, in_channels, 64, 64)
         with torch.no_grad():
             feats = self.encoder.extract_endpoints(dummy)
             ch1 = feats['reduction_1'].shape[1]  # ~H/2

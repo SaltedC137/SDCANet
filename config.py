@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import os
-from utils import calculate_mean_std
 
 
 plt.rcParams['font.family']='SimHei'

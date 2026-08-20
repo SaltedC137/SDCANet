@@ -25,15 +25,15 @@ class ModelType(Enum):
             elif self == ModelType.SEGNET:
                 return segnet(in_channels=in_channels, num_classes=num_classes)
             elif self == ModelType.LINKNET:
-                return linknet(n_classes=num_classes)
+                return linknet(n_classes=num_classes, in_channels=in_channels)
             elif self == ModelType.ABCNET:
                 return ABCNet(band=in_channels, n_classes=num_classes)
             elif self == ModelType.SDCANet:
                 return SDCANet(num_classes = num_classes,in_channels=in_channels)
             elif self == ModelType.DEEPLABV3:
-                return DeepLabV3Plus(num_classes = num_classes)
+                return DeepLabV3Plus(num_classes=num_classes, in_channels=in_channels)
             elif self == ModelType.EFFICIENTUNET:
-                 return EfficientUNet(num_classes=num_classes)
+                 return EfficientUNet(num_classes=num_classes, in_channels=in_channels)
             else:
                 raise ValueError(f"Unknown model type: {self.value}")
 

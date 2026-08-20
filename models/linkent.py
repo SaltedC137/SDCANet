@@ -70,10 +70,17 @@ class Decoder(nn.Module):
 
 
 class linknet(nn.Module):
-    def __init__(self, n_classes=12):
+    def __init__(self, n_classes=12, in_channels=3):
         super(linknet, self).__init__()
 
         base = models.resnet18(pretrained=False)
+
+        if in_channels != 3:
+            base.conv1 = nn.Conv2d(in_channels, base.conv1.out_channels,
+                                   kernel_size=base.conv1.kernel_size,
+                                   stride=base.conv1.stride,
+                                   padding=base.conv1.padding,
+                                   bias=False)
 
         self.in_block = nn.Sequential(
             base.conv1,

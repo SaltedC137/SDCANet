@@ -53,8 +53,11 @@ class FocalLoss(nn.Module):
 
         # Apply alpha if provided
         if self.alpha is not None:
-
-            alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+            if isinstance(self.alpha, (list, tuple)):
+                alpha = torch.tensor(self.alpha).to(inputs.device)
+                alpha_t = alpha[0] * (1 - targets) + alpha[1] * targets
+            else:
+                alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
             bce_loss = alpha_t * bce_loss
 
         # Apply focal loss weighting

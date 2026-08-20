@@ -42,12 +42,8 @@ class MeanStdCalculator(torch.utils.data.Dataset):
         else:
             image = np.array(Image.open(img_path).convert('RGB'))
 
-        # Normalize to [0, 1]
-        if image.dtype == np.uint8:
-            image = image / 255.0
-        elif image.dtype == np.uint16:
-            image = image / 65535.0
-            
+        image = image.astype(np.float32) / 255.0
+
         return image
 
 def calculate_mean_std(in_channels):
@@ -71,8 +67,8 @@ def calculate_mean_std(in_channels):
         b, h, w, c = images.shape
         nb_pixels = b * h * w
         # Flatten: [Batch*H*W, C]
-        flattened = images.view(-1, c)
-        
+        flattened = images.view(-1, c).double()
+
         sum_ = torch.sum(flattened, dim=0)
         sum_of_squares = torch.sum(flattened ** 2, dim=0)
         

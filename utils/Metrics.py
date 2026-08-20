@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 
 IGNORE_LABEL = 255
 def calc_semantic_segmentation_confusion(pred_labels, gt_labels, n_class, ignore_label=IGNORE_LABEL):
@@ -110,3 +111,78 @@ def eval_semantic_segmentation(pred_labels, gt_labels, n_class, ignore_label=IGN
         'precision_per_class': precision,
         'recall_per_class': recall
     }
+
+
+def zhang_suen_thinning(mask):
+    img = np.pad(mask > 0, 1, mode='constant')
+    while True:
+        changed = False
+        for step in range(2):
+            p2 = np.roll(img, -1, axis=1)
+            p4 = np.roll(img, 1, axis=0)
+            p6 = np.roll(img, 1, axis=1)
+            p8 = np.roll(img, -1, axis=0)
+            p3 = np.roll(p2, 1, axis=0)
+            p5 = np.roll(p4, 1, axis=1)
+            p7 = np.roll(p6, -1, axis=0)
+            p9 = np.roll(p8, -1, axis=1)
+            neighbors = (p2.astype(np.uint8) + p3.astype(np.uint8) + p4.astype(np.uint8)
+                         + p5.astype(np.uint8) + p6.astype(np.uint8) + p7.astype(np.uint8)
+                         + p8.astype(np.uint8) + p9.astype(np.uint8))
+            transitions = ((~p2 & p3).astype(np.uint8) + (~p3 & p4).astype(np.uint8)
+                           + (~p4 & p5).astype(np.uint8) + (~p5 & p6).astype(np.uint8)
+                           + (~p6 & p7).astype(np.uint8) + (~p7 & p8).astype(np.uint8)
+                           + (~p8 & p9).astype(np.uint8) + (~p9 & p2).astype(np.uint8))
+            if step == 0:
+                cond1 = p2 & p4 & p6
+                cond2 = p4 & p6 & p8
+            else:
+                cond1 = p2 & p4 & p8
+                cond2 = p2 & p6 & p8
+            remove = img & (neighbors >= 2) & (neighbors <= 6) & (transitions == 1) & ~cond1 & ~cond2
+            if remove.any():
+                img[remove] = False
+                changed = True
+        if not changed:
+            break
+    return img[1:-1, 1:-1]
+
+
+def calc_boundary_iou(pred_labels, gt_labels, boundary_width=2):
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                                       (2 * boundary_width + 1, 2 * boundary_width + 1))
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+    for pred_label, gt_label in zip(pred_labels, gt_labels):
+        gt_bin = (gt_label > 0).astype(np.uint8)
+        pred_bin = (pred_label > 0).astype(np.uint8)
+        gt_boundary = cv2.dilate(gt_bin, kernel) & (1 - cv2.erode(gt_bin, kernel))
+        band = cv2.dilate(gt_boundary, kernel)
+        total_tp += int(((pred_bin & gt_bin) & band).sum())
+        total_fp += int((pred_bin & (1 - gt_bin) & band).sum())
+        total_fn += int(((1 - pred_bin) & gt_bin & band).sum())
+    if total_tp + total_fp + total_fn == 0:
+        return np.nan
+    return total_tp / (total_tp + total_fp + total_fn)
+
+
+def calc_cldice(pred_labels, gt_labels):
+    total_tprec = 0
+    total_tsens = 0
+    total_pred_skel = 0
+    total_gt_skel = 0
+    for pred_label, gt_label in zip(pred_labels, gt_labels):
+        pred_bin = pred_label > 0
+        gt_bin = gt_label > 0
+        pred_skel = zhang_suen_thinning(pred_bin)
+        gt_skel = zhang_suen_thinning(gt_bin)
+        total_tprec += int((pred_skel & gt_bin).sum())
+        total_tsens += int((gt_skel & pred_bin).sum())
+        total_pred_skel += int(pred_skel.sum())
+        total_gt_skel += int(gt_skel.sum())
+    tprec = total_tprec / total_pred_skel if total_pred_skel else 0.0
+    tsens = total_tsens / total_gt_skel if total_gt_skel else 0.0
+    if tprec + tsens == 0:
+        return 0.0
+    return 2 * tprec * tsens / (tprec + tsens)

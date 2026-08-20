@@ -3,32 +3,14 @@ import torch.nn as nn
 from torch.nn import functional as F
 from .backbones.res2net import res2net50_v1b_26w_4s
 
-class h_sigmoid(nn.Module):
-    def __init__(self, inplace=True):
-        super(h_sigmoid, self).__init__()
-        self.relu = nn.ReLU6(inplace=inplace)
-
-    def forward(self, x):
-        return self.relu(x + 3) / 6
-
-class h_swish(nn.Module):
-    def __init__(self, inplace=True):
-        super(h_swish, self).__init__()
-        self.sigmoid = h_sigmoid(inplace=inplace)
-
-    def forward(self, x):
-        return x * self.sigmoid(x)
-
 
 # i wanna change it
 
 # class h_mish(nn.Module):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#     def forward(self,x):
-#         x = x * (torch.tanh(F.softplus(x)))
-
+#     def __init__(self):
+#         super().__init__()
+#     def forward(self, x):
+#         return x * torch.tanh(F.softplus(x))
 
 
 # CA attention
@@ -42,7 +24,7 @@ class CoordAtt(nn.Module):
 
         self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
         self.bn1 = nn.BatchNorm2d(mip)
-        self.act = h_swish()
+        self.act = nn.Mish(inplace=True)
         
         self.conv_h = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
         self.conv_w = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
@@ -71,52 +53,123 @@ class CoordAtt(nn.Module):
         return out
 
 
+# class StripDiffBlock(nn.Module):
+#     def __init__(self, in_channels, dilation = 2, k=3):
+#         super(StripDiffBlock, self).__init__()
+        
+#         p = (dilation * (k - 1)) // 2
+
+#         self.conv_h = nn.Sequential(
+#             nn.Conv2d(in_channels, in_channels, kernel_size=(1, k), 
+#                     padding=(0, p), 
+#                     dilation=(1, dilation)),
+#             nn.BatchNorm2d(in_channels), nn.Mish(inplace=True))
+        
+#         self.conv_v = nn.Sequential(
+#             nn.Conv2d(in_channels, in_channels, kernel_size=(k, 1), 
+#                     padding=(p, 0), 
+#                     dilation=(dilation, 1)),
+#             nn.BatchNorm2d(in_channels), nn.Mish(inplace=True))
+        
+#         self.conv_std = nn.Sequential(
+#             nn.Conv2d(in_channels,in_channels,kernel_size=3,padding=dilation,dilation=dilation),
+#             nn.BatchNorm2d(in_channels),nn.Mish(inplace=True))
+
+#         self.fusion = nn.Sequential(
+#             nn.Conv2d(in_channels * 2, in_channels, 3, padding=1), 
+#             nn.BatchNorm2d(in_channels),
+#             nn.Mish(inplace=True)
+#         )
+#         self.coord_att = CoordAtt(in_channels,in_channels)
+
+#     def forward(self, high_feat, low_feat):
+
+#         high_up = F.interpolate(high_feat, size=low_feat.shape[2:], mode='bilinear', align_corners=True)
+#         diff = torch.abs(high_up - low_feat)
+
+#         feat_h = self.conv_h(diff)
+#         feat_v = self.conv_v(diff)
+#         feat_std = self.conv_std(diff)
+
+#         feat_sum = feat_std + feat_h + feat_v
+
+#         combined = torch.cat([feat_sum, low_feat], dim=1)
+
+#         fused = self.fusion(combined)
+#         out = self.coord_att(fused)
+        
+#         return out + low_feat
+
+
+
+
 class StripDiffBlock(nn.Module):
-    def __init__(self, in_channels, dilation = 2, k=3):
-        super(StripDiffBlock, self).__init__()
+    def __init__(self, in_channels, dilation = 2, k_list=[3,5,7,9]):
+        super().__init__()
         
-        p = (dilation * (k - 1)) // 2
-
-        self.conv_h = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(1, k), 
-                    padding=(0, p), 
-                    dilation=(1, dilation)),
-            nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
-        
-        self.conv_v = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=(k, 1), 
-                    padding=(p, 0), 
-                    dilation=(dilation, 1)),
-            nn.BatchNorm2d(in_channels), nn.ReLU(inplace=True))
-        
-        self.conv_std = nn.Sequential(
-            nn.Conv2d(in_channels,in_channels,kernel_size=3,padding=dilation,dilation=dilation),
-            nn.BatchNorm2d(in_channels),nn.ReLU(inplace=True))
-
-        self.fusion = nn.Sequential(
-            nn.Conv2d(in_channels * 2, in_channels, 3, padding=1), 
+        self.diff_proj = nn.Sequential(
+            nn.Conv2d(in_channels * 4, in_channels, 1, bias=False),
             nn.BatchNorm2d(in_channels),
-            nn.ReLU(inplace=True)
+            nn.Mish(inplace=True)
         )
-        self.coord_att = CoordAtt(in_channels,in_channels)
+
+        self.conv_h_list = nn.ModuleList()
+        self.conv_v_list = nn.ModuleList()
+        
+        for k in k_list:
+            p = (dilation *(k -1)) // 2
+            self.conv_h_list.append(
+                nn.Sequential(nn.Conv2d(in_channels, in_channels, (1, k), padding=(0, p), dilation=(1, dilation)),
+                nn.BatchNorm2d(in_channels), nn.Mish(inplace=True))
+            )
+            self.conv_v_list.append(
+                nn.Sequential(nn.Conv2d(in_channels, in_channels, (k, 1), padding=(p, 0), dilation=(dilation, 1)),
+                nn.BatchNorm2d(in_channels), nn.Mish(inplace=True))
+            )
+
+        self.fuse_strips = nn.Sequential(
+            nn.Conv2d(in_channels * len(k_list) * 2, in_channels, 1, bias=False),
+            nn.BatchNorm2d(in_channels), nn.Mish(inplace=True)
+        )
+
+        self.conv_std = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, padding=dilation, dilation=dilation),
+            nn.BatchNorm2d(in_channels), nn.Mish(inplace=True)
+        )
+
+        self.gate = nn.Sequential(
+            nn.Conv2d(in_channels * 2, in_channels, 3, padding=1),
+            nn.BatchNorm2d(in_channels), nn.Sigmoid()
+        )
+        self.fusion = nn.Sequential(
+            nn.Conv2d(in_channels * 2, in_channels, 3, padding=1),
+            nn.BatchNorm2d(in_channels), nn.Mish(inplace=True)
+        )
+        self.coord_att = CoordAtt(in_channels, in_channels)
+
+
 
     def forward(self, high_feat, low_feat):
-
         high_up = F.interpolate(high_feat, size=low_feat.shape[2:], mode='bilinear', align_corners=True)
-        diff = torch.abs(high_up - low_feat)
+        diff_cat = torch.cat([high_up - low_feat, torch.abs(high_up - low_feat),
+                              high_up * low_feat, high_up / (low_feat + 1e-5)], dim=1)
+        diff = self.diff_proj(diff_cat)
 
-        feat_h = self.conv_h(diff)
-        feat_v = self.conv_v(diff)
-        feat_std = self.conv_std(diff)
+        feat_h = [conv_h(diff) for conv_h in self.conv_h_list]
+        feat_v = [conv_v(diff) for conv_v in self.conv_v_list]
+        strip_feat = self.fuse_strips(torch.cat(feat_h + feat_v, dim=1))
 
-        feat_sum = feat_std + feat_h + feat_v
+        std_feat = self.conv_std(diff)
+
+        feat_sum = strip_feat + std_feat
 
         combined = torch.cat([feat_sum, low_feat], dim=1)
-
+        gate = self.gate(combined)
         fused = self.fusion(combined)
+        fused = fused * gate + low_feat
+
         out = self.coord_att(fused)
-        
-        return out + low_feat
+        return out
 
 
 class ASPP(nn.Module):
@@ -124,31 +177,31 @@ class ASPP(nn.Module):
         super(ASPP, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+            nn.BatchNorm2d(branch_channels), nn.Mish(inplace=True))
         
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, kernel_size=3, dilation=dilation_rates[0], 
                       padding=dilation_rates[0], bias=False),
-            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+            nn.BatchNorm2d(branch_channels), nn.Mish(inplace=True))
         
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, kernel_size=3, dilation=dilation_rates[1], 
                       padding=dilation_rates[1], bias=False),
-            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+            nn.BatchNorm2d(branch_channels), nn.Mish(inplace=True))
         
         self.conv4 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, kernel_size=3, dilation=dilation_rates[2], 
                       padding=dilation_rates[2], bias=False),
-            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+            nn.BatchNorm2d(branch_channels), nn.Mish(inplace=True))
         
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.conv5 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(branch_channels), nn.ReLU(inplace=True))
+            nn.BatchNorm2d(branch_channels), nn.Mish(inplace=True))
 
         self.project = nn.Sequential(
             nn.Conv2d(branch_channels * 5, out_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_channels), nn.ReLU(inplace=True),
+            nn.BatchNorm2d(out_channels), nn.Mish(inplace=True),
             nn.Dropout(0.5) 
         )
 
@@ -185,7 +238,8 @@ class SDCANet(nn.Module):
                                 bias=old_conv.bias is not None
                                 )
             with torch.no_grad():
-                new_conv.weight[:, :3, :, :] = old_conv.weight
+                copy_ch = min(3, in_channels)
+                new_conv.weight[:, :copy_ch, :, :] = old_conv.weight[:, :copy_ch, :, :]
                 if in_channels > 3:
                      new_conv.weight[:, 3:, :, :] = torch.mean(old_conv.weight, dim=1, keepdim=True).repeat(1, in_channels - 3, 1, 1)
                 
@@ -194,11 +248,11 @@ class SDCANet(nn.Module):
         self._patch_resnet()
 
         self.aspp = ASPP(in_channels=2048, branch_channels=256, out_channels=64, dilation_rates=[6, 12, 18])
-        self.x4_dem_1 = nn.Sequential(nn.Conv2d(1024, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.x3_dem_1 = nn.Sequential(nn.Conv2d(512, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.x2_dem_1 = nn.Sequential(nn.Conv2d(256, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.x4_dem_1 = nn.Sequential(nn.Conv2d(1024, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.x3_dem_1 = nn.Sequential(nn.Conv2d(512, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.x2_dem_1 = nn.Sequential(nn.Conv2d(256, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
 
-        self.x_half_dem = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.x_half_dem = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
         self.sdb_half = StripDiffBlock(64, dilation=1)
 
         # denseness
@@ -216,17 +270,17 @@ class SDCANet(nn.Module):
 
         self.sdb_x5_x4_x3_x2_x1 = StripDiffBlock(64, dilation=1)
 
-        self.level3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.level2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.level1 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.level3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.level2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.level1 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
 
-        self.x5_dem_5 = nn.Sequential(nn.Conv2d(2048, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64),nn.ReLU(inplace=True))
-        self.x5_dem_4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.x5_dem_5 = nn.Sequential(nn.Conv2d(2048, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64),nn.Mish(inplace=True))
+        self.x5_dem_4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
 
-        self.output4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.output3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.output2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.output1 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.output4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.output3 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.output2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
+        self.output1 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
 
         self.final_cls = nn.Conv2d(64,num_classes,kernel_size=1)
 

@@ -4,11 +4,11 @@ import config as cfg
 
 def main():
 
-    # selected_model_type = ModelType.SDCANet
-    # train(usemodel=lambda: selected_model_type.get_model(
-    #     in_channels=cfg.IN_CHANNELS,
-    #     num_classes=cfg.NUM_CLASSES
-    # ))
+    selected_model_type = ModelType.SDCANet
+    train(usemodel=lambda: selected_model_type.get_model(
+        in_channels=cfg.IN_CHANNELS,
+        num_classes=cfg.NUM_CLASSES
+    ))
 
     
     # selected_model_type = ModelType.UNET
@@ -23,11 +23,11 @@ def main():
     #     num_classes=cfg.NUM_CLASSES
     # ))
 
-    selected_model_type = ModelType.ABCNET
-    train(usemodel=lambda: selected_model_type.get_model(
-        in_channels=cfg.IN_CHANNELS,
-        num_classes=cfg.NUM_CLASSES
-    ))
+    # selected_model_type = ModelType.ABCNET
+    # train(usemodel=lambda: selected_model_type.get_model(
+    #     in_channels=cfg.IN_CHANNELS,
+    #     num_classes=cfg.NUM_CLASSES
+    # ))
 
     # selected_model_type = ModelType.LINKNET
     # train(usemodel=lambda: selected_model_type.get_model(

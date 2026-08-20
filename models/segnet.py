@@ -96,7 +96,7 @@ class segnet(nn.Module):
         self.up3=segnetUp3(256,128)
         self.up2=segnetUp2(128,64)
         self.up1=segnetUp2(64,64)
-        self.finconv=conv2DBatchNormRelu(64,num_classes,3,1,1)
+        self.finconv=nn.Conv2d(64,num_classes,3,1,1)
 
     def forward(self,inputs):
         down1,indices_1,unpool_shape1=self.down1(inputs)

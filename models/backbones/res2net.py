@@ -3,6 +3,7 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torch
 import torch.nn.functional as F
+import os
 
 
 __all__ = ['Res2Net', 'res2net50_v1b_26w_4s']
@@ -179,7 +180,11 @@ class Res2Net(nn.Module):
 def res2net50_v1b_26w_4s(pretrained=False, **kwargs):
     model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth=26, scale=4, **kwargs)
     if pretrained:
-        model_state = torch.load('pre-trained/res2net50_v1b_26w_4s-3cf99910.pth')
+        weight_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   '..', '..', 'pre-trained', 'res2net50_v1b_26w_4s-3cf99910.pth')
+        if not os.path.exists(weight_path):
+            raise FileNotFoundError(f'pretrained weights not found: {weight_path}')
+        model_state = torch.load(weight_path, map_location='cpu', weights_only=True)
         model.load_state_dict(model_state)
     return model
 

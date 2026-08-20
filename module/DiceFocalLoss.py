@@ -57,7 +57,8 @@ class DiceFocalLoss(nn.Module):
             
             BCE_loss = F.binary_cross_entropy(inputs, targets, reduction='none')
             pt = torch.exp(-BCE_loss)
-            focal_loss = self.focal_alpha * (1-pt)**self.focal_gamma * BCE_loss
+            alpha_t = self.focal_alpha.to(inputs.device)[targets.long()]
+            focal_loss = alpha_t * (1-pt)**self.focal_gamma * BCE_loss
             
             return focal_loss.mean()
         else:

@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+import os
 
 
 def _make_divisible(ch, divisor=8, min_ch=None):
@@ -50,7 +51,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, num_classes=1000, alpha=1.0, round_nearest=8):#alpha超参数
+    def __init__(self, num_classes=1000, alpha=1.0, round_nearest=8, in_channels=3):#alpha超参数
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = _make_divisible(32 * alpha, round_nearest)
@@ -69,7 +70,7 @@ class MobileNetV2(nn.Module):
 
         features = []
         # conv1 layer
-        features.append(ConvBNReLU(3, input_channel, stride=2))
+        features.append(ConvBNReLU(in_channels, input_channel, stride=2))
         # building inverted residual residual blockes
         for t, c, n, s in inverted_residual_setting:
             output_channel = _make_divisible(c * alpha, round_nearest)
@@ -110,9 +111,13 @@ class MobileNetV2(nn.Module):
         return x
     
 
-def mobilenet_v2(pretrained=False, **kwargs):
-    model = MobileNetV2(num_classes=2)
+def mobilenet_v2(pretrained=False, num_classes=1000, in_channels=3, **kwargs):
+    model = MobileNetV2(num_classes=num_classes, in_channels=in_channels)
     if pretrained:
-        model_state = torch.load('pre-trained/mobilenet_v2-b0353104.pth')
-        model.load_state_dict(model_state,strict=False)
+        weight_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   '..', '..', 'pre-trained', 'mobilenet_v2-b0353104.pth')
+        if not os.path.exists(weight_path):
+            raise FileNotFoundError(f'pretrained weights not found: {weight_path}')
+        model_state = torch.load(weight_path, map_location='cpu', weights_only=True)
+        model.load_state_dict(model_state, strict=False)
     return model
