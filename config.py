@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import random
 import os
 
+from utils.calculate_mean_std import *
 
 plt.rcParams['font.family']='SimHei'
 
@@ -54,9 +55,9 @@ LR_SCHEDULER_PATIENCE=10
 IN_CHANNELS = 4
 NUM_CLASSES = class_num
 
-# NORM_MEAN ,NORM_STD = calculate_mean_std(IN_CHANNELS)
-NORM_MEAN = None
-NORM_STD = None
+NORM_MEAN ,NORM_STD = calculate_mean_std(IN_CHANNELS)
+# NORM_MEAN = None
+# NORM_STD = None
 
 SAVE_PATH = "./output/"
 

@@ -19,6 +19,7 @@ The network is designed to segment narrow, elongated erosion gullies that suffer
 low contrast, variable orientation, and easy fragmentation.
 """
 
+import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -111,21 +112,63 @@ class CoordAtt(nn.Module):
 #         feat_h = self.conv_h(diff)
 #         feat_v = self.conv_v(diff)
 #         feat_std = self.conv_std(diff)
-
 #         feat_sum = feat_std + feat_h + feat_v
 
 #         combined = torch.cat([feat_sum, low_feat], dim=1)
-
 #         fused = self.fusion(combined)
 #         out = self.coord_att(fused)
-        
+
 #         return out + low_feat
+
+'''
+Transformer 
+'''
+
+class GlobalContextTransformer(nn.Module):
+    def __init__(self, in_channels, num_heads=8, num_layers=2, dropout=0.2):
+        super().__init__()
+        self.in_channels = in_channels
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+        
+        self.norm = nn.LayerNorm(in_channels)
+        
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=in_channels,
+            nhead=num_heads,
+            dim_feedforward=in_channels * 4,
+            dropout=dropout,
+            activation='gelu',
+            batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        
+    def forward(self, x):
+        B, C, H, W = x.shape
+
+        x_flat = x.flatten(2).permute(0, 2, 1)  # [B, N, C]
+        N = H * W
+        
+        pos = torch.zeros(N, C, device=x.device)
+        position = torch.arange(N, device=x.device).unsqueeze(1)  # [N, 1]
+        div_term = torch.exp(torch.arange(0, C, 2, device=x.device) * 
+                            (-math.log(10000.0) / C))
+        pos[:, 0::2] = torch.sin(position * div_term)
+        pos[:, 1::2] = torch.cos(position * div_term)
+        pos = pos.unsqueeze(0)  # [1, N, C]
+        
+        x_flat = x_flat + pos
+        x_flat = self.norm(x_flat)
+        x_out = self.transformer(x_flat)
+
+        x_out = x_out.permute(0, 2, 1).reshape(B, C, H, W)
+        return x_out
 
 
 
 
 class StripDiffBlock(nn.Module):
-    def __init__(self, in_channels, dilation = 2, k_list=[3,5,7,9]):
+    def __init__(self, in_channels, dilation = 2, k_list=[3,5,7,9,11]):
         super().__init__()
         
         self.diff_proj = nn.Sequential(
@@ -174,7 +217,7 @@ class StripDiffBlock(nn.Module):
         high_up = F.interpolate(high_feat, size=low_feat.shape[2:], mode='bilinear', align_corners=True)
         diff_cat = torch.cat([high_up - low_feat, torch.abs(high_up - low_feat),
                               high_up * low_feat,
-                              high_up * torch.sign(low_feat.detach()) / low_feat.detach().abs().clamp(min=1e-2)], dim=1)
+                              high_up * torch.sign(low_feat.detach()) / (low_feat.detach().abs().clamp(min=1e-4) + 1e-6)], dim=1)
         diff = self.diff_proj(diff_cat)
 
         feat_h = [conv_h(diff) for conv_h in self.conv_h_list]
@@ -270,6 +313,10 @@ class SDCANet(nn.Module):
         self._patch_resnet()
 
         self.aspp = ASPP(in_channels=2048, branch_channels=256, out_channels=64, dilation_rates=[6, 12, 18])
+
+        # transformer for global context
+        self.global_transformer = GlobalContextTransformer(64,num_heads=4,num_layers=2)
+
         self.x4_dem_1 = nn.Sequential(nn.Conv2d(1024, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
         self.x3_dem_1 = nn.Sequential(nn.Conv2d(512, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
         self.x2_dem_1 = nn.Sequential(nn.Conv2d(256, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.Mish(inplace=True))
@@ -356,6 +403,8 @@ class SDCANet(nn.Module):
         x5 = self.resnet.layer4(x4)      # bs, 2048, 11, 11
 
         x5_dem_1 = self.aspp(x5)
+        x5_dem_1 = x5_dem_1 + self.global_transformer(x5_dem_1)
+        
         x4_dem_1 = self.x4_dem_1(x4)
         x3_dem_1 = self.x3_dem_1(x3)
         x2_dem_1 = self.x2_dem_1(x2)
