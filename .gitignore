@@ -1,0 +1,12 @@
+*.pth  
+*.tif 
+
+__pycache__ 
+*.csv
+*_summary.png
+*.zip
+*.tar.gz
+
+
+output/
+.vscode/

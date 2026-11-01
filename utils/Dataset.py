@@ -3,14 +3,16 @@ from torch.utils.data import Dataset
 from PIL import Image
 import numpy as np
 import torch
+import tifffile
 
 class Datainit(torch.utils.data.Dataset):
-    def __init__(self, root_list, transform=None, class_num=1):
+    def __init__(self, root_list, transform=None, class_num=1,in_channels = 3):
 
         self.img_dir = root_list[0]
         self.label_dir = root_list[1]
         self.transform = transform
         self.class_num = class_num
+        self.in_channels = in_channels
         
         self.img_names = sorted([
             f for f in os.listdir(self.img_dir)
@@ -20,21 +22,22 @@ class Datainit(torch.utils.data.Dataset):
         
     def _validate_files(self):
         valid_pairs = []
+        label_dir_files = os.listdir(self.label_dir)
         for img_name in self.img_names:
             base_name = os.path.splitext(img_name)[0]
             label_candidates = [
-                f for f in os.listdir(self.label_dir)
-                if f.startswith(base_name) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.tif', '.tiff'))
+                f for f in label_dir_files
+                if os.path.splitext(f)[0] == base_name and f.lower().endswith(('.png', '.jpg', '.jpeg', '.tif', '.tiff'))
             ]
-            
+
             if label_candidates:
                 valid_pairs.append((img_name, label_candidates[0]))
             else:
                 print(f"Warning: {img_name} No Label")
-        
+
         self.img_names = [pair[0] for pair in valid_pairs]
         self.label_names = [pair[1] for pair in valid_pairs]
-        
+
         print(f"Found {len(self.img_names)} Accessible Label-Img")
     
     def __len__(self):
@@ -47,20 +50,38 @@ class Datainit(torch.utils.data.Dataset):
         img_path = os.path.join(self.img_dir, img_name)
         label_path = os.path.join(self.label_dir, label_name)
 
-        image = np.array(Image.open(img_path).convert('RGB'))
+
+
+        if self.in_channels > 3:
+            try:
+                image = tifffile.imread(img_path)
+            except Exception:
+                image = np.array(Image.open(img_path))
+            if image.ndim == 2:
+                image = image[:, :, None]
+            elif image.ndim == 3 and image.shape[0] == self.in_channels and image.shape[0] < image.shape[1]:
+                image = image.transpose(1, 2, 0)
+            
+            # Convert int16/uint16 to float32 to avoid albumentations error
+            if image.dtype == np.int16 or image.dtype == np.uint16:
+                image = image.astype(np.float32)
+                
+        else:
+            image = np.array(Image.open(img_path).convert('RGB'))
+        
         label = np.array(Image.open(label_path).convert('L')) 
-
+        
         if self.class_num == 2:
-
             label = (label > 0).astype(np.uint8)
         elif self.class_num == 1:
             if label.max() > 1:
                 label = (label > 0).astype(np.uint8)
         else:
             unique_vals = np.unique(label)
-            if len(unique_vals) > self.class_num:
-                print(f"Warning: Found {len(unique_vals)} unique values but class_num={self.class_num}")
-            label = np.clip(label, 0, self.class_num - 1).astype(np.uint8)
+            if unique_vals.min() < 0 or unique_vals.max() >= self.class_num:
+                raise ValueError(f"Label values out of range [0, {self.class_num}) for {label_name}: "
+                                 f"min={unique_vals.min()}, max={unique_vals.max()}")
+            label = label.astype(np.uint8)
         
         if self.transform:
             augmented = self.transform(image=image, mask=label)

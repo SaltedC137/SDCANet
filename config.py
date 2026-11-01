@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import random
 import os
 
-
+from utils.calculate_mean_std import *
 
 plt.rcParams['font.family']='SimHei'
 
@@ -42,17 +42,22 @@ if not os.path.exists(class_dict_path):
     print(f"establish complete: {class_dict_path}")
 
 
-BATCH_SIZE = 4                     
+
+BATCH_SIZE = 16 
 H_size = 256   
 W_size= 256   
 class_num=2    
-LR=0.0001       
+LR=0.0002       
 EPOCH_NUMBER=100
 WEIGHT_DECAY=0.01
 LR_SCHEDULER_FACTOR=0.5
 LR_SCHEDULER_PATIENCE=10
-IN_CHANNELS = 3
+IN_CHANNELS = 4
 NUM_CLASSES = class_num
+
+NORM_MEAN ,NORM_STD = calculate_mean_std(IN_CHANNELS)
+# NORM_MEAN = None
+# NORM_STD = None
 
 SAVE_PATH = "./output/"
 

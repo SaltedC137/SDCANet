@@ -12,6 +12,8 @@ class ModelType(Enum):
     LINKNET = "linkent"
     ABCNET = "abcnet"
     SDCANet = "sdcanet"
+    DEEPLABV3 = "deeplabv3"
+    EFFICIENTUNET = "efficientnet"
 
 
     def get_model(self, in_channels: int = 3, num_classes: int = 2) -> nn.Module:
@@ -23,11 +25,15 @@ class ModelType(Enum):
             elif self == ModelType.SEGNET:
                 return segnet(in_channels=in_channels, num_classes=num_classes)
             elif self == ModelType.LINKNET:
-                return linknet(n_classes=num_classes)
+                return linknet(n_classes=num_classes, in_channels=in_channels)
             elif self == ModelType.ABCNET:
                 return ABCNet(band=in_channels, n_classes=num_classes)
             elif self == ModelType.SDCANet:
-                return SDCANet(num_classes = num_classes)
+                return SDCANet(num_classes = num_classes,in_channels=in_channels)
+            elif self == ModelType.DEEPLABV3:
+                return DeepLabV3Plus(num_classes=num_classes, in_channels=in_channels)
+            elif self == ModelType.EFFICIENTUNET:
+                 return EfficientUNet(num_classes=num_classes, in_channels=in_channels)
             else:
                 raise ValueError(f"Unknown model type: {self.value}")
 
